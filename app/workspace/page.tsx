@@ -46,10 +46,10 @@ function Home() {
 
   async function send() {
     if (!chat.trim() || thinking) return;
-    setThinking(true);
+    setThinking(true); setReply("Milo is thinking — reasoning models take up to two minutes.");
     const res = await fetch("/api/milo/chat", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: [{ role: "user", content: chat }] }),
+      body: JSON.stringify({ message: chat, business: me?.business_name ?? undefined }),
     });
     const j = await res.json();
     setReply(j.reply || j.error || "…"); setChat(""); setThinking(false);

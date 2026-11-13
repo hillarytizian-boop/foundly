@@ -1,26 +1,41 @@
 import { NextResponse } from "next/server";
-import { askMilo } from "@/lib/milo";
 import { createClient } from "@/lib/supabase/server";
+import { nvidiaChat, isConfigured, modelId } from "@/lib/nvidia";
+import { HARNESS_PREAMBLE } from "@/lib/harness";
+
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  try {
-    const { messages } = await req.json();
-    if (!Array.isArray(messages)) return NextResponse.json({ error: "messages array required" }, { status: 400 });
-    const reply = await askMilo(messages);
+  const { message, business } = await req.json().catch(() => ({ message: "" }));
+  if (!message?.trim()) return NextResponse.json({ error: "Say something first." }, { status: 400 });
 
-    // Save to DB if signed in (best-effort, never blocks the reply)
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const lastUser = [...messages].reverse().find((m: any) => m.role === "user");
-        if (lastUser) await supabase.from("milo_messages").insert({ user_id: user.id, role: "user", content: lastUser.content });
-        await supabase.from("milo_messages").insert({ user_id: user.id, role: "assistant", content: reply });
-      }
-    } catch {}
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-    return NextResponse.json({ reply });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Milo failed" }, { status: 500 });
+  if (!isConfigured()) {
+    return NextResponse.json({
+      ok: false,
+      configured: false,
+      reply: "Live reasoning is off on this deployment (no model key), so I can only run the built-in tasks — try any capability on Home or Build and I'll do that deterministically.",
+    }, { status: 503 });
   }
+
+  const r = await nvidiaChat({
+    messages: [
+      { role: "system", content: `${HARNESS_PREAMBLE}\n\nYou are Milo, Foundly's AI employee. Answer in at most 5 short sentences or a 4-item list. Never invent prices or guarantees.` },
+      { role: "user", content: `${business ? `Business context: ${business}\n\n` : ""}${message}` },
+    ],
+    maxTokens: 900,
+    timeoutMs: 170_000,
+  });
+
+  if (!r.ok) {
+    return NextResponse.json({ ok: false, configured: r.configured, error: r.error, model: r.model }, { status: 502 });
+  }
+
+  if (user) {
+    await supabase.from("activity").insert({ user_id: user.id, message: `Milo answered a question (${r.model})` });
+  }
+
+  return NextResponse.json({ ok: true, reply: r.text, model: modelId(), ms: r.ms });
 }

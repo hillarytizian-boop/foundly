@@ -97,6 +97,8 @@ export default function RunPage() {
             )}
           </div>
 
+          <SocialPublisher />
+
           <div className="card">
             <div className="card-head"><span>Scheduled work</span><span className="go">Autopilot off by default</span></div>
             <div className="card-pad" style={{ paddingBottom: 10 }}>
@@ -130,6 +132,96 @@ export default function RunPage() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SocialPublisher() {
+  const [channels, setChannels] = useState<{ slug: string; name: string; canPost: string | null; connected: boolean; configured: boolean }[]>([]);
+  const [slug, setSlug] = useState("");
+  const [body, setBody] = useState("");
+  const [extra, setExtra] = useState({ pageId: "", igUserId: "", imageUrl: "", channel: "", to: "" });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string; url?: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/integrations/status").then((r) => r.json()).then((j) => {
+      const postable = (j.providers ?? []).filter((p: any) => p.canPost);
+      setChannels(postable);
+      const first = postable.find((p: any) => p.connected) ?? postable[0];
+      if (first) setSlug(first.slug);
+    }).catch(() => {});
+  }, []);
+
+  const current = channels.find((c) => c.slug === slug);
+
+  async function post() {
+    if (!body.trim()) { setMsg({ kind: "err", text: "Write something to post first." }); return; }
+    setBusy(true); setMsg(null);
+    const res = await fetch("/api/social/post", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, body, ...extra }),
+    });
+    const json = await res.json();
+    setBusy(false);
+    if (!res.ok) setMsg({ kind: "err", text: json.error || "Publish failed" });
+    else setMsg({ kind: "ok", text: "Published.", url: json.url });
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head"><span>Publish to social</span><span className="go">goes out immediately</span></div>
+      <div className="card-pad">
+        <div className="stack" style={{ gap: 8 }}>
+          <label className="field"><span>Channel</span>
+            <select value={slug} onChange={(e) => setSlug(e.target.value)}>
+              {channels.length === 0 && <option value="">Loading…</option>}
+              {channels.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.name}{c.connected ? " — connected" : c.configured ? " — not connected" : " — needs credentials"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field"><span>Post</span>
+            <textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)}
+              placeholder="Write the post, or paste a draft Milo wrote…" />
+          </label>
+
+          {slug === "instagram" && (
+            <label className="field"><span>Image URL (required by Instagram)</span>
+              <input value={extra.imageUrl} onChange={(e) => setExtra({ ...extra, imageUrl: e.target.value })} placeholder="https://…/photo.jpg" /></label>
+          )}
+          {slug === "facebook" && (
+            <label className="field"><span>Facebook Page ID</span>
+              <input value={extra.pageId} onChange={(e) => setExtra({ ...extra, pageId: e.target.value })} placeholder="1234567890" /></label>
+          )}
+          {slug === "slack" && (
+            <label className="field"><span>Channel</span>
+              <input value={extra.channel} onChange={(e) => setExtra({ ...extra, channel: e.target.value })} placeholder="#general" /></label>
+          )}
+          {slug === "gmail" && (
+            <label className="field"><span>Send to</span>
+              <input value={extra.to} onChange={(e) => setExtra({ ...extra, to: e.target.value })} placeholder="customer@example.com" /></label>
+          )}
+
+          <div className="row">
+            <button className="btn btn-sm" onClick={post} disabled={busy || !current?.connected}>
+              {busy ? "Publishing…" : "Publish now"}
+            </button>
+            {current && !current.connected && (
+              <a className="btn btn-sm btn-ghost" href="/workspace/integrations">Connect {current.name} first</a>
+            )}
+            {body.length > 0 && <span className="small dim">{body.length} chars</span>}
+          </div>
+
+          {msg && (
+            <p className="small" style={{ margin: 0, color: msg.kind === "ok" ? "var(--good)" : "var(--bad)", fontWeight: 600 }}>
+              {msg.text} {msg.url && <a href={msg.url} target="_blank" rel="noreferrer">View post ↗</a>}
+            </p>
+          )}
         </div>
       </div>
     </div>

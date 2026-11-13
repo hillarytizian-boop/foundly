@@ -29,15 +29,29 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   // Build environment: generate a site
   await page.goto(`${BASE}/workspace/build`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
-  await page.fill('label.field:has-text("What the business does") input', "handmade candles for Nairobi homes");
+  await page.fill('label.field:has-text("What the business does") textarea', "handmade candles for Nairobi homes, sold in sets of three");
   await page.fill('label.field:has-text("Business name") input', "Terracotta Supply");
-  await page.click('button:has-text("Run")');
-  await page.waitForFunction(() => !document.body.innerText.includes("Working…"), { timeout: 40000 });
+  await page.click('button:has-text("Build with the agent team")');
+  await page.waitForFunction(() => !document.body.innerText.includes("Agents are working…"), { timeout: 60000 });
   await page.waitForTimeout(2500);
   let t = await page.innerText("body");
-  log(t.includes("Terracotta Supply") && t.includes("Completed"), "site built + task completed");
-  log(t.includes("Your websites") && !t.includes("No sites yet"), "site persisted in website list");
-  await page.screenshot({ path: "/home/user/foundly/shot-build.png", fullPage: true });
+  log(["Strategist", "Builder", "Reviewer", "Publisher"].every((a) => t.includes(a)), "all four agents reported a step");
+  log(/\d+\/100/.test(t), "reviewer score shown");
+  log(t.includes("Terracotta Supply") && /\/s\/terracotta-supply/.test(t), "agent build created a slugged site");
+  log(await page.locator('iframe[title="Site preview"]').count() === 1, "site preview rendered in canvas");
+  log(/Fast · built-in|Live · model/.test(t), "engine toggle offered (fast vs live model)");
+  log(/\/5 passed|\d\/\d+ passed/.test(t) && /Guardrails/i.test(t), "guardrail report rendered");
+
+  // publish it
+  await page.click('button:has-text("Publish")');
+  await page.waitForTimeout(2500);
+  t = await page.innerText("body");
+  log(t.includes("live"), "site marked live after publish");
+  const slug = (t.match(/\/s\/(terracotta-supply[\w-]*)/) || [])[1];
+  log(!!slug, `resolved slug ${slug}`);
+  const pub = await page.request.get(`${BASE}/s/${slug}`);
+  log(pub.status() === 200 && (await pub.text()).length > 500, `/s/${slug} served publicly (${pub.status()})`);
+  await page.screenshot({ path: "/home/user/foundly/shot-build.png" });
 
   // Run environment: outreach (approval-gated)
   await page.goto(`${BASE}/workspace/run`, { waitUntil: "networkidle" });
@@ -62,7 +76,7 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   await page.waitForTimeout(1800);
   t = await page.innerText("body");
   log(t.includes("Weekly business review") && t.includes("Autopilot off"), "automation created");
-  await page.screenshot({ path: "/home/user/foundly/shot-run.png", fullPage: true });
+  await page.screenshot({ path: "/home/user/foundly/shot-run.png" });
 
   // Documents
   await page.goto(`${BASE}/workspace/docs`, { waitUntil: "networkidle" });
@@ -72,22 +86,50 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
 
   // Integrations
   await page.goto(`${BASE}/workspace/integrations`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(1200);
+  await page.waitForSelector('button:has-text("Add credentials to enable")', { timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(600);
   t = await page.innerText("body");
   log(t.includes("Connect Milo to your tools") && t.includes("Stripe"), "integrations page renders catalogue");
-  await page.click('button:has-text("Connect") >> nth=0');
-  await page.waitForTimeout(1500);
+  log(/\d+ of 19 providers ready/.test(t), "provider readiness count rendered");
+  const credButtons = await page.locator('button:has-text("Add credentials to enable")').count();
+  log(credButtons > 0, `unconfigured providers honestly disabled (${credButtons} shown)`);
+  log(await page.locator('a:has-text("Connect")').count() === 0, "no Connect link offered without credentials");
+  const social = await page.locator('.card:has-text("can post")').count();
+  log(social >= 6, `publishable social channels listed (${social})`);
+  await page.screenshot({ path: "/home/user/foundly/shot-integrations.png" });
+
+  // social publisher in Run refuses to fake a post
+  await page.goto(`${BASE}/workspace/run`, { waitUntil: "networkidle" });
+  await page.waitForSelector('label.field:has-text("Post") textarea', { timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(600);
   t = await page.innerText("body");
-  log(/1 of \d+ connected/.test(t), "integration connect persisted");
-  await page.screenshot({ path: "/home/user/foundly/shot-integrations.png", fullPage: true });
+  log(t.includes("Publish to social"), "social publisher panel on Run");
+  await page.fill('label.field:has-text("Post") textarea', "Three-candle sets, made in Nairobi.");
+  const postBtn = page.locator('button:has-text("Publish now")');
+  log(await postBtn.isDisabled(), "publish blocked until a channel is connected");
 
   // Home dashboard reflects work
   await page.goto(`${BASE}/workspace`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(1800);
+  await page.waitForFunction(() => document.body.innerText.match(/Credits\s*\d+/), { timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(600);
   t = await page.innerText("body");
   log(/TASKS DONE|Tasks done/i.test(t), "home dashboard renders stats");
-  log(/\b10 credits\b|\b12 credits\b|\b15 credits\b/.test(t), "credits loaded from profile");
-  await page.screenshot({ path: "/home/user/foundly/shot-home.png", fullPage: true });
+  log(/credits\s*\d+/i.test(t) && !/credits\s*—/i.test(t), "credits loaded from profile");
+  await page.screenshot({ path: "/home/user/foundly/shot-home.png" });
+
+  // model + harness status
+  const ms = await page.request.get(`${BASE}/api/models/status`);
+  const mj = await ms.json();
+  log(ms.status() === 200 && typeof mj.configured === "boolean", `model status reports configured=${mj.configured}`);
+  log(!JSON.stringify(mj).includes("nvapi-"), "model status never leaks the API key");
+
+  const probe = await page.request.post(`${BASE}/api/models/status`, { data: { prompt: "Reply with exactly: harness ok" }, timeout: 300000 });
+  const pj = await probe.json().catch(() => ({}));
+  if (mj.configured) {
+    log(probe.status() === 200 && /harness ok/i.test(pj.text || ""), `live model answered via app (${Math.round((pj.ms || 0) / 1000)}s)`);
+  } else {
+    log(probe.status() === 503, "unconfigured model reports 503 honestly");
+  }
 
   // marketing pages
   for (const p of ["/", "/pricing"]) {
