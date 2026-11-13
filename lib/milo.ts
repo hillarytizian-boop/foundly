@@ -75,3 +75,54 @@ export function generateSiteContent(idea: string, businessName: string) {
     cta: "Get started",
   };
 }
+
+export function generateOutreach(idea: string, audience: string) {
+  const who = audience?.trim() || "local shops and potential customers";
+  return `Subject: Quick idea for ${who}
+
+Hi {{first_name}},
+
+I'm building something for ${who} — ${idea.slice(0, 90)}.
+
+I've already put together a one-page site and a simple offer, and I'd love your honest reaction:
+would this solve a real problem for you?
+
+If yes, I'll send over the details and a link. No pitch deck, no pressure — just a quick look
+and a yes or no.
+
+— {{your_name}}
+
+---
+Milo's notes:
+- Send in batches of 10-20, personalized first line beats any template
+- Follow up once after 3 days, then stop
+- Track replies in the Outreach tab; nothing sends without your approval`;
+}
+
+export function generateSocial(idea: string, platform: string) {
+  const p = platform?.trim() || "Instagram";
+  return `3 launch posts for ${p} — ${idea.slice(0, 70)}
+
+POST 1 — The announcement
+Hook: "I built a thing. It's small. It might help you."
+Body: ${idea.slice(0, 110)}. I'm opening it up to a few people this week to see if it's actually useful.
+CTA: Comment "in" and I'll send you the link.
+Hashtags: #buildinpublic #smallbusiness
+
+POST 2 — The problem
+Hook: "Most people don't need a business plan. They need one customer."
+Body: That's what I'm testing — one offer, one page, one checkout link. Everything else is noise.
+CTA: Reply with the one thing you'd pay to have solved.
+Hashtags: #founder #solopreneur
+
+POST 3 — The proof
+Hook: "Day 3 of shipping in public."
+Body: Here's what changed: the offer got simpler, the page got shorter, and I talked to 5 real people.
+CTA: Want the next update? Follow along.
+Hashtags: #indiehackers #startup
+
+Milo's notes:
+- Post 1 at 8-10am local, post 2 two days later, post 3 on day 3
+- Reply to every comment within an hour during launch week
+- Copy-paste only after you approve the wording`;
+}

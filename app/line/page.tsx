@@ -17,6 +17,10 @@ export default function Line() {
   const [bizName, setBizName] = useState("");
   const [sitePreview, setSitePreview] = useState<any>(null);
   const [tab, setTab] = useState<"chat" | "sites" | "outreach" | "social" | "payments">("chat");
+  const [audience, setAudience] = useState("");
+  const [outreach, setOutreach] = useState("");
+  const [platform, setPlatform] = useState("Instagram");
+  const [social, setSocial] = useState("");
 
   useEffect(() => {
     loadSites();
@@ -59,7 +63,7 @@ export default function Line() {
     const json = await res.json();
     setSitePreview(json.site);
     setBusy(false);
-    loadSites();
+    await loadSites();
   }
 
   async function checkout() {
@@ -67,6 +71,32 @@ export default function Line() {
     const json = await res.json();
     if (json.url) window.location.href = json.url;
     else alert(json.error || "Checkout not configured yet — add Stripe keys in .env.local");
+  }
+
+  async function draftOutreach() {
+    if (!idea.trim() && !input.trim()) return;
+    setBusy(true);
+    const res = await fetch("/api/outreach/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idea: idea || input, audience }),
+    });
+    const json = await res.json();
+    setOutreach(json.draft || json.error || "");
+    setBusy(false);
+  }
+
+  async function draftSocial() {
+    if (!idea.trim() && !input.trim()) return;
+    setBusy(true);
+    const res = await fetch("/api/social/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idea: idea || input, platform }),
+    });
+    const json = await res.json();
+    setSocial(json.draft || json.error || "");
+    setBusy(false);
   }
 
   return (
@@ -137,16 +167,41 @@ export default function Line() {
       {tab === "outreach" && (
         <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 16 }}>
           <h3>Outreach — Milo drafts, you approve</h3>
-          <p>Ask Milo in chat: “Draft outreach to local shops for my candles.” He'll write the first message. Nothing sends without your OK.</p>
-          <button onClick={() => setTab("chat")} style={{ background: "#111", color: "#fff", border: 0, padding: "10px 18px", borderRadius: 8, fontWeight: 700 }}>Ask Milo for outreach</button>
+          <p style={{ color: "#555" }}>Nothing sends without your OK. Milo writes the first message; you copy, approve, and send.</p>
+          <div style={{ display: "grid", gap: 10 }}>
+            <textarea placeholder="Your idea — e.g. handmade candles for Nairobi homes" value={idea} onChange={(e) => setIdea(e.target.value)} rows={2} style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }} />
+            <input placeholder="Who are you writing to? e.g. local gift shops in Nairobi" value={audience} onChange={(e) => setAudience(e.target.value)} style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }} />
+            <button onClick={draftOutreach} disabled={busy} style={{ background: "#111", color: "#fff", border: 0, padding: 12, borderRadius: 8, fontWeight: 700 }}>
+              {busy ? "Drafting…" : "Draft outreach"}
+            </button>
+          </div>
+          {outreach && (
+            <pre style={{ marginTop: 16, whiteSpace: "pre-wrap", background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 16, fontFamily: "inherit", fontSize: 14 }}>{outreach}</pre>
+          )}
+          {!outreach && <p style={{ color: "#888", fontSize: 13 }}>Milo will write a first message plus send notes. You approve before anything goes out.</p>}
         </div>
       )}
 
       {tab === "social" && (
         <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 16 }}>
           <h3>Social posts — launch week drafts</h3>
-          <p>Ask Milo: “Draft 3 launch posts for Instagram.” You'll get hooks + captions ready to copy-paste.</p>
-          <button onClick={() => setTab("chat")} style={{ background: "#111", color: "#fff", border: 0, padding: "10px 18px", borderRadius: 8, fontWeight: 700 }}>Ask Milo for posts</button>
+          <p style={{ color: "#555" }}>Three posts with hooks and captions, ready to copy-paste once you approve.</p>
+          <div style={{ display: "grid", gap: 10 }}>
+            <textarea placeholder="Your idea — e.g. handmade candles for Nairobi homes" value={idea} onChange={(e) => setIdea(e.target.value)} rows={2} style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }} />
+            <select value={platform} onChange={(e) => setPlatform(e.target.value)} style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }}>
+              <option>Instagram</option>
+              <option>TikTok</option>
+              <option>X</option>
+              <option>LinkedIn</option>
+              <option>Facebook</option>
+            </select>
+            <button onClick={draftSocial} disabled={busy} style={{ background: "#111", color: "#fff", border: 0, padding: 12, borderRadius: 8, fontWeight: 700 }}>
+              {busy ? "Writing…" : "Draft 3 posts"}
+            </button>
+          </div>
+          {social && (
+            <pre style={{ marginTop: 16, whiteSpace: "pre-wrap", background: "#fafafa", border: "1px solid #eee", borderRadius: 12, padding: 16, fontFamily: "inherit", fontSize: 14 }}>{social}</pre>
+          )}
         </div>
       )}
 
