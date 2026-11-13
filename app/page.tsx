@@ -1,97 +1,240 @@
 import Link from "next/link";
+import { CloudMark, ArrowRight, ArrowUpRight, Check } from "@/components/marketing/Icons";
+import MarketingHeader from "@/components/marketing/MarketingHeader";
+import MarketingFooter from "@/components/marketing/MarketingFooter";
+import Hero from "@/components/marketing/Hero";
+import WorkspacePreview from "@/components/marketing/WorkspacePreview";
+import ArtefactGallery from "@/components/marketing/ArtefactGallery";
 
 const STEPS = [
-  ["Meet Milo.", "Your AI employee."],
-  ["Say the idea. Milo builds it.", "A website, a name, a logo direction and a business email — done for you."],
-  ["He runs it while you sleep.", "Step after step, and you see every move in the activity feed."],
-  ["He finds people to reach out to.", "Milo drafts each email and post. You decide what goes out."],
-  ["Text him from anywhere.", "Phone or desktop, he's always a message away."],
+  {
+    title: "Meet Milo",
+    body: "Your dedicated AI employee who operates continuously — no burnout, no vacations, no technical bottlenecks.",
+    foot: "Always online, in your pocket",
+  },
+  {
+    title: "Say the idea. Milo builds it.",
+    body: "A website, brand direction, page copy and a business email — all prepared for you, from one sentence.",
+    foot: "Brand identity created in seconds",
+  },
+  {
+    title: "He runs it while you sleep",
+    body: "Step after step, and you see every move. A complete audit trail of tasks, drafts, approvals and costs.",
+    foot: "100% transparent audit log",
+  },
+  {
+    title: "He finds people to reach out to",
+    body: "He drafts every email and post for you. You decide what goes out. Prospective buyers sourced from your brief.",
+    foot: "You keep full editorial control",
+  },
+  {
+    title: "Text him from anywhere",
+    body: "Phone or desktop, he's always a message away. Check status, update prices, or ask him to draft a new campaign.",
+    foot: "",
+    pills: ["Web dashboard", "Workspace chat", "Email drafts", "Social posts"],
+  },
 ];
 
-const CAPS = [
-  ["Discover", "Ideas, validation, market briefs, competitor teardowns"],
-  ["Plan", "Business plan, pricing, pitch narrative, first 30 days"],
-  ["Create", "Website, naming, logo direction, product catalogue"],
-  ["Publish", "Page live, prices published, checkout on your Stripe"],
-  ["Market", "Launch posts, campaigns, content calendars"],
-  ["Acquire", "Prospect lists, outreach sequences, follow-ups"],
-  ["Communicate", "Emails, replies and support macros you approve"],
-  ["Operate", "Documents, weekly reviews, business admin"],
-  ["Automate", "Scheduled runs and Autopilot inside your permissions"],
-  ["Monitor", "Every task, credit and approval in one place"],
+const CHECKS = [
+  ["Your website, published", "A real page at /s/your-business, live in seconds — not a mockup."],
+  ["Payments, in your name", "Connect your own Stripe. Foundly takes 0% transaction fee."],
+  ["Email and posts, with your OK", "Nothing reaches customers without your explicit sign-off."],
+  ["The whole team, in one run", "Strategist, Builder, Reviewer and Publisher, with every note visible."],
+  ["Your data stays yours", "Tokens are stored server-side only. Nothing is used to train public models."],
+];
+
+const FAQ = [
+  ["What is Foundly?",
+    "Foundly gives you Milo, an AI employee who builds and runs your business. He sets up your website and brand assets, writes copy, sources leads, drafts social posts and handles admin on your behalf."],
+  ["Do I need to know how to code?",
+    "Not at all. You describe the business in plain English. Milo writes the page, assembles it, audits it for accessibility and compliance, and publishes it for you."],
+  ["How do I get started?",
+    "Type your idea into the prompt at the top of this page. You'll create an account, get 15 free credits, and the agent team will build your first site in one run."],
+  ["Does Milo do anything without asking me?",
+    "No. Sending outreach, publishing social posts and going live with a site all sit behind an approval queue until you say yes. Rejected means rejected."],
+  ["How much does it cost?",
+    "Free to start with 15 credits. Every task shows its credit cost before it runs. Paid plans start at $25/month, and Foundly adds zero transaction fee on your Stripe payments."],
+  ["Do I own what Milo makes?",
+    "Yes, 100%. The HTML, copy, brand direction, documents and customer lists are yours. Site HTML can be exported at any time."],
+  ["Can Milo take payments for me?",
+    "Once you connect Stripe, customer payments deposit straight into your own account. Foundly never sits in the middle of the money."],
 ];
 
 export default function Home() {
   return (
-    <div className="page">
-      <section className="hero">
-        <span className="eyebrow">Foundly · AI business employee</span>
-        <h1>Build a business that runs on its own.</h1>
-        <p>Meet Milo, the AI employee who does the work.</p>
+    <>
+      <style>{`body{background:#fafbfc;}`}</style>
 
-        <form action="/sign-up" method="get" className="ideabox">
-          <input name="idea" placeholder="Ask Milo to build a business that…" aria-label="Describe your business idea" />
-          <button className="btn" type="submit" style={{ borderRadius: 999, padding: "9px 18px" }}>Start</button>
-        </form>
+      <aside className="mk-ann">
+        <span className="dot" />
+        <span>The Foundly agent team is live — building and publishing sites 24/7.</span>
+        <a href="#how-it-works">See how it works →</a>
+      </aside>
 
-        <div className="feature-strip">
-          <span>Website</span><span>Logo &amp; email</span><span>Outreach</span>
-          <span>Social posts</span><span>Stripe</span><span>Documents</span><span>Autopilot</span>
+      <MarketingHeader />
+      <Hero />
+      <WorkspacePreview />
+
+      {/* ── social proof ─────────────────────────────────────── */}
+      <section className="mk-proof mk-wrap">
+        <div className="mk-proof-grid">
+          <div>
+            <p className="mk-logos-label">Built by people who shipped at</p>
+            <div className="mk-logos">
+              <span className="serif">Stanford</span>
+              <span className="serif">Duke</span>
+              <span>Google</span>
+              <span style={{ letterSpacing: "-0.05em" }}>stripe</span>
+              <span className="mono">OpenAI</span>
+              <span>shopify</span>
+              <span className="serif">MIT</span>
+              <span className="wide">COSTCO</span>
+            </div>
+          </div>
+
+          <div className="mk-proof-card">
+            <h3>Thousands of people have signed up to use Foundly, including founders from top teams.</h3>
+            <p>
+              People who studied and built at these places use Foundly to start something of their
+              own without spending months writing code.
+            </p>
+            <Link href="/sign-up">Start yours <ArrowUpRight /></Link>
+          </div>
         </div>
       </section>
 
-      <section className="section">
-        <h2>What Milo does, in order</h2>
-        <p className="sub">No prompts to memorise. Describe the outcome; he plans the work and reports what he did.</p>
-        <div className="steps" style={{ maxWidth: 760, margin: "0 auto" }}>
-          {STEPS.map(([b, s], i) => (
-            <div key={b} className="card step">
-              <span className="step-n">{i + 1}</span>
-              <div><b>{b}</b><span>{s}</span></div>
+      {/* ── how it works ─────────────────────────────────────── */}
+      <section className="mk-how" id="how-it-works">
+        <div className="mk-wrap mk-section">
+          <div style={{ maxWidth: 680 }}>
+            <span className="mk-eyebrow">How Milo works</span>
+            <h2 className="mk-h2">From idea to first customer.</h2>
+            <p className="mk-lead">He builds it, runs it, does the outreach and is a message away.</p>
+          </div>
+
+          <div className="mk-how-grid">
+            {STEPS.map((s, i) => (
+              <div key={s.title} className="mk-card">
+                <div className="mk-card-num">{i + 1}</div>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+                {s.pills ? (
+                  <div className="mk-pill-row">
+                    {s.pills.map((p) => <span key={p}>{p}</span>)}
+                  </div>
+                ) : (
+                  <div className="foot">{s.foot}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <ArtefactGallery />
+
+      {/* ── dark showcase ────────────────────────────────────── */}
+      <section className="mk-dark" id="security">
+        <div className="mk-wrap">
+          <div className="mk-dark-grid">
+            <div>
+              <span className="mk-eyebrow">Everything, handled</span>
+              <h2>Everything a business needs, handled.</h2>
+              <p className="lead">
+                Milo sets it all up in your name, on the tools real businesses run on, and checks
+                with you before anything goes out.
+              </p>
+              <div className="mk-check-list">
+                {CHECKS.map(([t, d]) => (
+                  <div key={t} className="mk-check">
+                    <i><Check size={10} /></i>
+                    <div><b>{t}</b><span>{d}</span></div>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            <div className="mk-orb-wrap">
+              <div className="mk-orb">
+                <div className="mk-core">
+                  <CloudMark size={34} />
+                  <span style={{ marginTop: 4 }}>MILO CORE</span>
+                </div>
+                <div className="mk-orbit t">Stripe Connect</div>
+                <div className="mk-orbit b">Vercel Edge</div>
+                <div className="mk-orbit l">Google Workspace</div>
+                <div className="mk-orbit r">Supabase</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── impact ───────────────────────────────────────────── */}
+      <section className="mk-impact">
+        <div className="mk-wrap">
+          <div className="mk-impact-grid">
+            <div>
+              <h2 className="mk-h2">Start with an idea. End with something real.</h2>
+              <p className="mk-lead">
+                Foundly is built for one person with a business in their head and no time to spend
+                three months writing code. Bring the idea — the team does the rest.
+              </p>
+            </div>
+            <div className="mk-impact-stats">
+              <div className="mk-stat-big">
+                <p className="k">Businesses started</p>
+                <p className="v">One brief</p>
+                <p className="n">Site, brand, copy and outreach from a single description.</p>
+              </div>
+              <div className="mk-stat-big sky">
+                <p className="k">Agents per build</p>
+                <p className="v">Four</p>
+                <p className="n">Strategist, Builder, Reviewer and Publisher, in sequence.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── faq ──────────────────────────────────────────────── */}
+      <section className="mk-faq mk-wrap" id="pricing">
+        <h2 className="mk-h2">Questions, answered.</h2>
+        <p className="mk-lead" style={{ marginBottom: 18 }}>
+          Everything you need to know about working with your new AI employee.
+        </p>
+        <div style={{ borderTop: "1px solid #e2e8f0" }}>
+          {FAQ.map(([q, a]) => (
+            <details key={q}>
+              <summary>
+                <span>{q}</span>
+                <span className="chev">↓</span>
+              </summary>
+              <p>{a}</p>
+            </details>
           ))}
         </div>
-      </section>
-
-      <section className="section">
-        <h2>The whole capability map</h2>
-        <p className="sub">Ten areas of work, each with real tasks, real credit costs and an approval gate where it matters.</p>
-        <div className="grid-3">
-          {CAPS.map(([t, d]) => (
-            <div key={t} className="card card-pad">
-              <h4 style={{ marginBottom: 3 }}>{t}</h4>
-              <p className="small muted" style={{ margin: 0 }}>{d}</p>
-            </div>
-          ))}
+        <div style={{ marginTop: 26 }}>
+          <Link href="/pricing" className="mk-cta mk-cta-lg">
+            See plans &amp; credit costs <ArrowRight />
+          </Link>
         </div>
       </section>
 
-      <section className="section">
-        <h2>You see him work</h2>
-        <p className="sub">Proof before polish. Every task is visible, costed, and gated where sending is irreversible.</p>
-        <div className="grid-3">
-          {[
-            ["Every task tracked", "Queued, running, waiting for you, done or failed — never a black box."],
-            ["Credits before the run", "Each capability shows what it costs. Failed runs are refunded automatically."],
-            ["Approval is real", "Outreach, social and live-site edits sit in a queue until you say yes. Rejected means rejected."],
-          ].map(([t, d]) => (
-            <div key={t} className="card card-pad">
-              <h4 style={{ marginBottom: 3 }}>{t}</h4>
-              <p className="small muted" style={{ margin: 0 }}>{d}</p>
-            </div>
-          ))}
+      {/* ── cta ──────────────────────────────────────────────── */}
+      <section className="mk-wrap" style={{ paddingBottom: 56 }}>
+        <div className="mk-cta-cloud">
+          <div className="orn"><CloudMark size={22} /></div>
+          <h2>Milo&apos;s ready. Are you?</h2>
+          <form action="/sign-up" method="get" className="mk-prompt">
+            <input name="idea" placeholder="Ask Milo to build a business…" aria-label="Describe your business idea" />
+            <button className="mk-cta" type="submit" aria-label="Start"><ArrowRight size={13} /></button>
+          </form>
+          <p className="note">Free to start · No technical setup required · Live in minutes</p>
         </div>
       </section>
 
-      <section className="section">
-        <div className="card card-pad-lg" style={{ textAlign: "center", padding: "30px 20px" }}>
-          <h2 style={{ marginBottom: 4 }}>Start free — 15 credits, no card</h2>
-          <p className="small muted" style={{ margin: "0 auto 16px", maxWidth: 420 }}>
-            Enough to validate an idea, build a site and draft your first outreach.
-          </p>
-          <Link href="/sign-up?returnTo=%2Fworkspace" className="btn">Get started</Link>
-        </div>
-      </section>
-    </div>
+      <MarketingFooter />
+    </>
   );
 }

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import TopBar from "@/components/TopBar";
+import { FooterGate, TopBarGate } from "@/components/Chrome";
 
 export const metadata: Metadata = {
-  title: "Foundly — An AI employee for anyone with an idea",
+  title: "Foundly — Build a business that runs on its own",
   description:
     "Foundly is an AI employee named Milo. He builds your website, writes to your customers, drafts your posts and sets up payments — and you approve what goes out.",
 };
@@ -11,15 +11,19 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* Progressive enhancement: the app renders correctly without this font. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
-        <TopBar />
+        <TopBarGate />
         <main>{children}</main>
-        <footer className="site-footer">
-          <div className="site-footer-inner">
-            <span><strong>Foundly</strong> — an AI employee for anyone with an idea.</span>
-            <span>Milo does the work. You see every move and approve what goes out.</span>
-          </div>
-        </footer>
+        <FooterGate />
       </body>
     </html>
   );

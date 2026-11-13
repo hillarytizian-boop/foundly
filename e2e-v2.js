@@ -143,6 +143,46 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
     log((await page.title()).includes("Foundly"), `marketing ${p}`);
   }
 
+  // homepage matches the reference layout
+  await page.goto(BASE + "/", { waitUntil: "networkidle" });
+  await page.waitForTimeout(700);
+  t = await page.innerText("body");
+  const has = (sel) => page.locator(sel).count();
+  log(await has(".mk-ann") === 1, "announcement bar present");
+  log(await has(".mk-header .mk-nav a") === 5, "header nav has 5 section links");
+  log(await has(".mk-hero .mk-h1") === 1 && /runs on its own/i.test(t), "hero headline rendered");
+  log(await has("#prompt input") >= 1, "hero prompt pill present");
+  log(await has(".mk-workspace .mk-col") === 3, "workspace preview has 3 columns");
+  log(await has(".mk-steps .mk-step") === 4, "next-steps checklist rendered");
+  log(await has(".mk-logos span") === 8, "logo wall has 8 marks");
+  log(await has(".mk-how-grid .mk-card") === 5, "five how-it-works cards");
+  log(await has(".mk-artefacts .mk-card") === 5, "artefact gallery rendered");
+  log(await has(".mk-dark .mk-check") === 5, "dark showcase checklist");
+  log(await has(".mk-faq details") === 7, "seven FAQ rows");
+  log(await has(".mk-cta-cloud") === 1, "closing CTA panel");
+  log(await has(".mk-footer-grid") === 1, "marketing footer rendered");
+  log((await page.locator(".topbar").count()) === 0, "app pill nav suppressed on marketing home");
+
+  // FAQ disclosure actually opens
+  await page.locator(".mk-faq details").first().locator("summary").click();
+  await page.waitForTimeout(250);
+  log(await page.locator(".mk-faq details").first().evaluate((el) => el.open), "FAQ accordion opens");
+
+  // hero prompt routes to sign-up and carries the idea
+  await page.fill("#prompt input", "handmade candles for Nairobi homes");
+  await page.click("#prompt button");
+  await page.waitForURL("**/sign-up**", { timeout: 20000 }).catch(() => {});
+  log(page.url().includes("/sign-up") && decodeURIComponent(page.url()).includes("handmade candles"), "hero prompt hands the idea to sign-up");
+
+  // no horizontal overflow on a phone
+  const phone = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  await phone.goto(BASE + "/", { waitUntil: "networkidle" });
+  await phone.waitForTimeout(600);
+  const overflow = await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  log(overflow <= 0, `no horizontal overflow on mobile (${overflow}px)`);
+  await phone.screenshot({ path: "/home/user/foundly/shot-mobile.png" });
+  await phone.close();
+
   console.log("CONSOLE_ERRORS:", errs.length ? JSON.stringify(errs.slice(0, 4)) : "none");
   console.log("TEST_EMAIL:", EMAIL);
   console.log(fails === 0 ? "ALL CHECKS PASSED" : `${fails} CHECK(S) FAILED`);
