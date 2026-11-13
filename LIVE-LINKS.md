@@ -10,6 +10,9 @@
 | Documents | https://foundly-three.vercel.app/workspace/docs |
 | Public sites | https://foundly-three.vercel.app/s/&lt;slug&gt; |
 
+**Production deployment:** `dpl_4wEo2PZHC4bYmyWiJEYaTWvJRQdf` — GitHub `main` @ **`4e20ff9`** (READY, promoted).
+**Verified:** `BASE=https://foundly-three.vercel.app node e2e-v2.js` → **31/31 PASS**, `CONSOLE_ERRORS: none`.
+
 ## Health endpoints
 
 | Endpoint | Meaning |
