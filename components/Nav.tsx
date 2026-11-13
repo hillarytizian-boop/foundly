@@ -9,6 +9,7 @@ export default function Nav() {
       <nav style={{ display: "flex", gap: 16, alignItems: "center" }}>
         <Link href="/about" style={{ textDecoration: "none", color: "#333" }}>About</Link>
         <Link href="/pricing" style={{ textDecoration: "none", color: "#333" }}>Pricing</Link>
+        <Link href="/workspace" style={{ textDecoration: "none", color: "#333" }}>Workspace</Link>
         <Link href="/sign-in" style={{ textDecoration: "none", color: "#333" }}>Sign in</Link>
         <Link href="/sign-up" style={{ background: "#111", color: "#fff", padding: "8px 14px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
           Get started

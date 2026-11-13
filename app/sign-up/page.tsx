@@ -14,7 +14,7 @@ export default function SignUp() {
 function SignUpInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const returnTo = params.get("returnTo") || "/line";
+  const returnTo = params.get("returnTo") || "/workspace";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");

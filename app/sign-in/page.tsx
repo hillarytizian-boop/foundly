@@ -18,7 +18,7 @@ export default function SignIn() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) setMsg(error.message);
-    else router.push("/line");
+    else router.push("/workspace");
   }
 
   return (
