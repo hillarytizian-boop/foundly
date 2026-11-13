@@ -84,6 +84,32 @@ export default function DocsPage() {
           </div>
         </div>
       </div>
+
+      <div className="card card-pad" style={{ marginTop: 14 }}>
+        <h3 style={{ marginBottom: 4 }}>How the agent team works</h3>
+        <p className="small muted" style={{ margin: "0 0 6px" }}>
+          Four agents — Strategist, Builder, Reviewer, Publisher — run in sequence. Every build passes through the
+          ECC-style harness before you can publish it.
+        </p>
+        <div className="grid-2" style={{ gap: 10 }}>
+          <div>
+            <div className="meta">Guardrails (every build)</div>
+            <ul className="small muted" style={{ margin: "2px 0 0", paddingLeft: 16 }}>
+              <li>No credentials or keys in generated output (blocking)</li>
+              <li>No guarantees, medical or financial claims, invented awards</li>
+              <li>Real contact route, self-contained page, lang + charset</li>
+            </ul>
+          </div>
+          <div>
+            <div className="meta">Engines</div>
+            <ul className="small muted" style={{ margin: "2px 0 0", paddingLeft: 16 }}>
+              <li><strong>Fast</strong> — built-in deterministic team, instant</li>
+              <li><strong>Live</strong> — NVIDIA model writes the copy (1–3 min), page assembled locally</li>
+              <li>If the model is unavailable the built-in team takes over and the UI says so</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
