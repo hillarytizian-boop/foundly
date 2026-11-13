@@ -51,6 +51,15 @@ export default function RunEnvironment() {
     load();
   }
 
+  async function decide(taskId: string, decision: "approve" | "reject") {
+    await fetch("/api/tasks/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task_id: taskId, decision }),
+    });
+    load();
+  }
+
   return (
     <WorkspaceShell>
       <p style={{ color: "#666", textTransform: "uppercase", letterSpacing: 1, fontSize: 12, fontWeight: 700, margin: 0 }}>Run · operate the business</p>
@@ -106,10 +115,19 @@ export default function RunEnvironment() {
       <h2 style={{ marginTop: 32, fontSize: 18 }}>Awaiting approval ({pending.length})</h2>
       {pending.length === 0 ? <p style={{ color: "#888" }}>Nothing waiting. Good.</p> : (
         <div style={{ display: "grid", gap: 10 }}>
-          {pending.map((t) => {
-            const cap = caps.find((c) => c.kind === t.kind);
-            return cap ? <CapabilityRunner key={t.id} capability={cap} compact /> : null;
-          })}
+          {pending.map((t) => (
+            <div key={t.id} style={{ border: "1px solid #ffe0b2", background: "#fffbf5", borderRadius: 12, padding: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
+                <strong>{t.result?.title || t.title}</strong>
+                <span style={{ fontSize: 12, color: "#b26a00", fontWeight: 700 }}>Drafted {new Date(t.created_at).toLocaleString()}</span>
+              </div>
+              <p style={{ color: "#555", margin: "6px 0 0", fontSize: 14 }}>{t.result?.summary}</p>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button onClick={() => decide(t.id, "approve")} style={{ background: "#0a6", color: "#fff", border: 0, padding: "8px 14px", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>Approve &amp; release</button>
+                <button onClick={() => decide(t.id, "reject")} style={{ background: "#fff", color: "#b00", border: "1px solid #f0c0c0", padding: "8px 14px", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>Reject</button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </WorkspaceShell>
