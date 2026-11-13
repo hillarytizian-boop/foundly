@@ -1,17 +1,12 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowRight, CloudMark } from "./Icons";
+import { CloudBank, CloudField, MiloCloud } from "./Mascot";
 
-const IDEAS = [
-  "Artisanal roastery shop",
-  "B2B SaaS lead outreach",
-  "Nairobi vintage drop",
-];
-
-export default function Hero() {
+export default function Hero({ header }: { header?: React.ReactNode }) {
   const [idea, setIdea] = useState("");
   const router = useRouter();
+  const ready = idea.trim().length > 0;
 
   function start(e?: React.FormEvent) {
     e?.preventDefault();
@@ -20,40 +15,44 @@ export default function Hero() {
   }
 
   return (
-    <section className="mk-hero">
-      <div className="mk-hero-dots" aria-hidden />
-      <div className="mk-hero-in">
-        <span className="mk-badge">
-          <CloudMark size={12} />
-          <span>Meet Milo · Autonomous business employee</span>
-        </span>
+    <section className="mk-sky" id="product">
+      {header}
+      <div className="mk-sky-body">
+        <MiloCloud className="mk-mascot" />
 
-        <h1 className="mk-h1">Build a business that runs on its own.</h1>
+        <h1>Build a business that runs on its own.</h1>
+        <p className="lede">Meet Milo, the AI employee who does the work.</p>
 
-        <p className="mk-hero-sub">
-          Meet Milo, the AI employee who does the work. He builds your storefront, writes your
-          brand and posts, talks to suppliers, and finds your first paying customers.
-        </p>
-
-        <form className="mk-prompt" onSubmit={start} id="prompt">
-          <span className="mk-prompt-icon"><CloudMark size={15} /></span>
-          <input
+        <form className="mk-ask" onSubmit={start} id="prompt">
+          <textarea
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
-            placeholder="Ask Milo to build a business…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) start(e);
+            }}
+            placeholder="Ask Milo to build a business that…"
             aria-label="Describe the business you want"
+            rows={3}
           />
-          <button className="mk-cta" type="submit">
-            Start with Milo <ArrowRight />
-          </button>
+          <div className="mk-ask-foot">
+            <button
+              className={`mk-send${ready ? " ready" : ""}`}
+              type="submit"
+              disabled={!ready}
+              aria-label="Start with Milo"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 19V5M6 11l6-6 6 6" />
+              </svg>
+            </button>
+          </div>
         </form>
+      </div>
 
-        <div className="mk-chips">
-          <span className="lead-in">Popular setups:</span>
-          {IDEAS.map((t) => (
-            <button key={t} type="button" onClick={() => setIdea(t)}>&ldquo;{t}&rdquo;</button>
-          ))}
-        </div>
+      <div className="mk-clouds" aria-hidden>
+        <CloudField />
+        <CloudBank />
       </div>
     </section>
   );

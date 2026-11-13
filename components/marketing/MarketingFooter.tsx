@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { CloudMark, GlobeIcon } from "./Icons";
+import { GlobeIcon } from "./Icons";
+import { WordSquiggle } from "./Mascot";
 
 const COLS = [
   {
@@ -44,14 +45,12 @@ const COLS = [
 export default function MarketingFooter() {
   return (
     <footer className="mk-footer">
-      <div className="mk-wrap">
+      <div className="">
         <div className="mk-footer-grid">
           <div className="mk-footer-brand">
-            <Link href="/" className="mk-logo">
-              <span className="mk-logo-mark" style={{ width: 27, height: 27, borderRadius: 9 }}>
-                <CloudMark size={15} />
-              </span>
-              <span className="mk-logo-word" style={{ fontSize: 17 }}>Foundly</span>
+            <Link href="/" className="mk-wordmark">
+              <WordSquiggle size={18} />
+              <span>Foundly</span>
             </Link>
             <p>
               The AI employee that builds and runs your business. Milo writes the site, does the
