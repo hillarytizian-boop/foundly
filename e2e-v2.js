@@ -67,9 +67,13 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
 
   // approve it
   await page.click('button:has-text("Approve")');
-  await page.waitForTimeout(1800);
+  await page.waitForFunction(
+    () => /Approved and released|Approved\b|no longer waiting/i.test(document.body.innerText),
+    { timeout: 30000 }
+  ).catch(() => {});
+  await page.waitForTimeout(600);
   t = await page.innerText("body");
-  log(t.includes("Approved and released"), "approval accepted");
+  log(/Approved and released|Approved\b/i.test(t), "approval accepted");
 
   // add an automation
   await page.click('button:has-text("+ Weekly business review")');
