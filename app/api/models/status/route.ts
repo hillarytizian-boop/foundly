@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       { role: "user", content: prompt },
     ],
     maxTokens: 700,
-    timeoutMs: 170_000,
+    timeoutMs: 285_000,
     temperature: 0.5,
   });
 

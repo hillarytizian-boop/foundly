@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       { role: "user", content: `${business ? `Business context: ${business}\n\n` : ""}${message}` },
     ],
     maxTokens: 900,
-    timeoutMs: 170_000,
+    timeoutMs: 285_000,
   });
 
   if (!r.ok) {
