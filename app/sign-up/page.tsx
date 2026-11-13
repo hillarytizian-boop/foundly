@@ -1,11 +1,12 @@
 "use client";
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function SignUp() {
   return (
-    <Suspense fallback={<div style={{ maxWidth: 420, margin: "48px auto", padding: "0 20px" }}>Loading…</div>}>
+    <Suspense fallback={<div className="page-narrow"><p className="muted">Loading…</p></div>}>
       <SignUpInner />
     </Suspense>
   );
@@ -22,8 +23,7 @@ function SignUpInner() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setMsg("");
+    setLoading(true); setMsg("");
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({ email, password });
     setLoading(false);
@@ -32,18 +32,29 @@ function SignUpInner() {
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: "48px auto", padding: "0 20px" }}>
-      <h1>Create your Foundly account</h1>
-      <p style={{ color: "#555" }}>Milo is ready when you are. Describe your idea and he'll get to work.</p>
-      <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 20 }}>
-        <input type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }} />
-        <input type="password" required placeholder="Password (min 6 chars)" value={password} onChange={(e) => setPassword(e.target.value)} style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }} />
-        <button disabled={loading} style={{ background: "#111", color: "#fff", padding: 12, borderRadius: 8, border: 0, fontWeight: 700 }}>
-          {loading ? "Creating…" : "Sign up"}
-        </button>
-        {msg && <p style={{ color: "#b00" }}>{msg}</p>}
-      </form>
-      <p style={{ marginTop: 16 }}>Already have an account? <a href="/sign-in">Sign in</a></p>
+    <div className="page-narrow" style={{ maxWidth: 420, paddingTop: 46 }}>
+      <div className="card card-pad-lg">
+        <span className="eyebrow">Get started</span>
+        <h1 style={{ fontSize: 22, margin: "2px 0 4px" }}>Create your Foundly account</h1>
+        <p className="small muted" style={{ margin: "0 0 16px" }}>
+          Milo is ready when you are. Describe your idea and he&apos;ll get to work.
+        </p>
+        <form onSubmit={submit} className="stack" style={{ gap: 9 }}>
+          <label className="field"><span>Email</span>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@business.com" />
+          </label>
+          <label className="field"><span>Password</span>
+            <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" />
+          </label>
+          <button className="btn" disabled={loading} style={{ width: "100%", marginTop: 2 }}>
+            {loading ? "Creating…" : "Sign up — 15 free credits"}
+          </button>
+          {msg && <p className="small" style={{ color: "var(--bad)", margin: 0 }}>{msg}</p>}
+        </form>
+        <p className="small muted" style={{ margin: "12px 0 0" }}>
+          Already have an account? <Link href="/sign-in">Sign in</Link>
+        </p>
+      </div>
     </div>
   );
 }

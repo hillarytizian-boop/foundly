@@ -24,16 +24,15 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   // RUN a Home capability (market research)
   await page.goto(`${BASE}/workspace?run=research.market`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
-  const inputs = page.locator('input[placeholder^="Business"]');
-  log(await inputs.count() > 0, "home capability form rendered");
+  log(await page.locator('label.field input').count() > 0, "home capability form rendered");
 
   // Build environment: generate a site
   await page.goto(`${BASE}/workspace/build`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
-  await page.fill('input[placeholder^="What the business does"]', "handmade candles for Nairobi homes");
-  await page.fill('input[placeholder^="Business name"]', "Terracotta Supply");
+  await page.fill('label.field:has-text("What the business does") input', "handmade candles for Nairobi homes");
+  await page.fill('label.field:has-text("Business name") input', "Terracotta Supply");
   await page.click('button:has-text("Run")');
-  await page.waitForFunction(() => !document.body.innerText.includes("Milo is working…"), { timeout: 40000 });
+  await page.waitForFunction(() => !document.body.innerText.includes("Working…"), { timeout: 40000 });
   await page.waitForTimeout(2500);
   let t = await page.innerText("body");
   log(t.includes("Terracotta Supply") && t.includes("Completed"), "site built + task completed");
@@ -43,10 +42,10 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   // Run environment: outreach (approval-gated)
   await page.goto(`${BASE}/workspace/run`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
-  await page.fill('input[placeholder^="Business"]', "handmade candles for Nairobi homes");
-  await page.fill('input[placeholder^="Who you\'re writing to"]', "boutique gift shops").catch(() => {});
+  await page.fill('label.field:has-text("Business") input', "handmade candles for Nairobi homes");
+  await page.fill('label.field:has-text("Who you") input', "boutique gift shops").catch(() => {});
   await page.click('button:has-text("Run")');
-  await page.waitForFunction(() => !document.body.innerText.includes("Milo is working…"), { timeout: 40000 });
+  await page.waitForFunction(() => !document.body.innerText.includes("Working…"), { timeout: 40000 });
   await page.waitForTimeout(1500);
   t = await page.innerText("body");
   log(t.includes("waiting for your approval") || t.includes("needs_approval"), "outreach gated behind approval");

@@ -1,21 +1,23 @@
 import type { Metadata } from "next";
-import Nav from "@/components/Nav";
+import "./globals.css";
+import TopBar from "@/components/TopBar";
 
 export const metadata: Metadata = {
   title: "Foundly — An AI employee for anyone with an idea",
-  description: "Foundly is an AI platform where Milo, your AI employee, turns your idea into something real, runs the business for you, and helps it earn.",
+  description:
+    "Foundly is an AI employee named Milo. He builds your website, writes to your customers, drafts your posts and sets up payments — and you approve what goes out.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif", color: "#111", background: "#fff" }}>
-        <Nav />
+      <body>
+        <TopBar />
         <main>{children}</main>
-        <footer style={{ borderTop: "1px solid #eee", padding: "24px 20px", marginTop: 48, color: "#666", fontSize: 14 }}>
-          <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-            <span><strong>Foundly</strong> — An AI employee for anyone with an idea.</span>
-            <span>Milo builds your site, writes for you, and helps you get paid.</span>
+        <footer className="site-footer">
+          <div className="site-footer-inner">
+            <span><strong>Foundly</strong> — an AI employee for anyone with an idea.</span>
+            <span>Milo does the work. You see every move and approve what goes out.</span>
           </div>
         </footer>
       </body>

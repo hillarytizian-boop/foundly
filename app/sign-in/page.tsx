@@ -1,10 +1,21 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function SignIn() {
+  return (
+    <Suspense fallback={<div className="page-narrow"><p className="muted">Loading…</p></div>}>
+      <SignInInner />
+    </Suspense>
+  );
+}
+
+function SignInInner() {
   const router = useRouter();
+  const params = useSearchParams();
+  const returnTo = params.get("returnTo") || "/workspace";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
@@ -12,27 +23,34 @@ export default function SignIn() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setMsg("");
+    setLoading(true); setMsg("");
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) setMsg(error.message);
-    else router.push("/workspace");
+    else router.push(returnTo);
   }
 
   return (
-    <div style={{ maxWidth: 420, margin: "48px auto", padding: "0 20px" }}>
-      <h1>Welcome back</h1>
-      <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 20 }}>
-        <input type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }} />
-        <input type="password" required placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ padding: 12, borderRadius: 8, border: "1px solid #ddd" }} />
-        <button disabled={loading} style={{ background: "#111", color: "#fff", padding: 12, borderRadius: 8, border: 0, fontWeight: 700 }}>
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-        {msg && <p style={{ color: "#b00" }}>{msg}</p>}
-      </form>
-      <p style={{ marginTop: 16 }}>New here? <a href="/sign-up">Create an account</a></p>
+    <div className="page-narrow" style={{ maxWidth: 420, paddingTop: 46 }}>
+      <div className="card card-pad-lg">
+        <span className="eyebrow">Welcome back</span>
+        <h1 style={{ fontSize: 22, margin: "2px 0 4px" }}>Sign in to Foundly</h1>
+        <p className="small muted" style={{ margin: "0 0 16px" }}>Milo has been keeping track of everything.</p>
+        <form onSubmit={submit} className="stack" style={{ gap: 9 }}>
+          <label className="field"><span>Email</span>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@business.com" />
+          </label>
+          <label className="field"><span>Password</span>
+            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" />
+          </label>
+          <button className="btn" disabled={loading} style={{ width: "100%", marginTop: 2 }}>{loading ? "Signing in…" : "Sign in"}</button>
+          {msg && <p className="small" style={{ color: "var(--bad)", margin: 0 }}>{msg}</p>}
+        </form>
+        <p className="small muted" style={{ margin: "12px 0 0" }}>
+          New here? <Link href="/sign-up">Create an account</Link>
+        </p>
+      </div>
     </div>
   );
 }
