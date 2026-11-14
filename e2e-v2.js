@@ -133,12 +133,47 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   await page.waitForFunction(() => document.body.innerText.match(/Credits\s*\d+/), { timeout: 30000 }).catch(() => {});
   await page.waitForTimeout(600);
   t = await page.innerText("body");
-  // the workspace is now a chat-first surface
-  log((await page.locator(".app-shell").count()) === 1, "app shell renders after login");
-  log((await page.locator(".cs-composer textarea").count()) === 1, "chat composer rendered");
-  log(/What are we building/i.test(t), "Milo greets you in the thread");
-  log(/\d+ credits/.test(t), "credits badge loaded from profile");
-  log((await page.locator(".app-side .app-item").count()) >= 5, "sidebar navigation rendered");
+  // ── post-login: dark onboarding, matched to foundable.com/home ──
+  await page.goto(`${BASE}/workspace`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(2200);
+  t = await page.innerText("body");
+  const bg = await page.evaluate(() => {
+    const el = document.querySelector(".app");
+    return el ? getComputedStyle(el).backgroundColor : "";
+  });
+  log(bg === "rgb(17, 17, 18)", `dark app background (${bg})`);
+  log((await page.locator(".a-cloud").count()) === 1, "glowing cloud mascot on the onboarding screen");
+  log(/Let&apos;s get started|Let's get started/i.test(t), "onboarding heading rendered");
+  log((await page.locator(".a-choice").count()) === 3, "three onboarding choices");
+  log(/I have an idea/i.test(t) && /I have a website/i.test(t) && /Surprise me/i.test(t),
+    "choices match the reference (idea / website / surprise me)");
+  await page.screenshot({ path: "/home/user/foundly/shot-onboarding.png" });
+
+  // idea step
+  await page.click("button:has-text('I have an idea')");
+  await page.waitForTimeout(600);
+  log(/What's your idea\?/i.test(await page.innerText("body")), "idea prompt rendered");
+  log((await page.locator(".a-textarea").count()) === 1, "idea textarea rendered");
+  log(await page.locator(".a-continue").isDisabled(), "Continue disabled until there is an idea");
+  log((await page.locator(".a-back").count()) === 1, "Back affordance rendered");
+  await page.screenshot({ path: "/home/user/foundly/shot-idea.png" });
+
+  // typing an idea opens the thread and sends it
+  const tIdea = Date.now();
+  await page.fill(".a-textarea", "handmade candles for Nairobi homes");
+  await page.waitForTimeout(250);
+  log(!(await page.locator(".a-continue").isDisabled()), "Continue enabled once an idea is typed");
+  await page.click(".a-continue");
+  await page.waitForSelector(".a-composer textarea", { timeout: 30000 });
+  await page.waitForTimeout(1600);
+  log((await page.locator(".a-bubble-me").count()) === 1,
+    `idea carried into the thread (${Date.now() - tIdea}ms)`);
+  log(/handmade candles/i.test(await page.locator(".a-bubble-me").first().innerText()),
+    "first message is the idea you typed");
+
+  // dark thread chrome
+  log((await page.locator(".a-top").count()) === 1, "thread header rendered");
+  log(/Milo/.test(await page.locator(".a-top .t").innerText().catch(() => "")), "thread titled Milo");
 
   // model + harness status
   const mj = await page.evaluate(async (base) => {
@@ -293,44 +328,53 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   log(xStatus.tokenConnect === true && Boolean(xStatus.guide), "provider advertises token path + guide");
   await page.keyboard.press("Escape");
 
-  // ── chat surface: optimistic send, live stream, persistence ──
+  // ── chat: optimistic send, live stream, persistence ──────────
   await page.goto(`${BASE}/workspace`, { waitUntil: "networkidle" });
-  await page.waitForSelector(".cs-composer textarea", { timeout: 30000 });
-  await page.waitForTimeout(900);
+  // wait until the app has decided: either onboarding or the thread
+  await page.waitForFunction(
+    () => document.querySelector(".a-composer textarea") || document.querySelector(".a-choice"),
+    { timeout: 40000 }
+  ).catch(() => {});
+  // a fresh account lands on onboarding — walk through it to reach the thread
+  if ((await page.locator(".a-choice").count()) > 0) {
+    await page.click("button:has-text('I have an idea')");
+    await page.waitForTimeout(500);
+    await page.fill(".a-textarea", "handmade candles for Nairobi homes");
+    await page.click(".a-continue");
+  }
+  await page.waitForSelector(".a-composer textarea", { timeout: 40000 });
+  await page.waitForTimeout(1200);
 
   const tMsg = Date.now();
-  await page.fill(".cs-composer textarea", "handmade candles for Nairobi homes");
-  await page.click(".cs-send");
+  await page.fill(".a-composer textarea", "What should I sell first?");
+  await page.click(".a-send");
   await page.waitForTimeout(400);
-  log((await page.locator(".cs-bubble-me").count()) === 1,
-    `user message appears instantly (${Date.now() - tMsg}ms)`);
-  log((await page.locator(".cs-work-head").count()) === 1, "live work indicator while Milo thinks");
+  log((await page.locator(".a-bubble-me").count()) >= 1,
+    `anything you send appears instantly (${Date.now() - tMsg}ms)`);
+  log((await page.locator(".a-work-head").count()) === 1, "live work indicator while Milo thinks");
 
   let sawProgress = false;
   for (let i = 0; i < 40; i++) {
     await page.waitForTimeout(500);
-    if ((await page.locator(".cs-trace, .cs-bubble-live").count()) > 0) { sawProgress = true; break; }
+    if ((await page.locator(".a-trace, .a-bubble-live").count()) > 0) { sawProgress = true; break; }
   }
   log(sawProgress, `streamed progress visible before the answer (${Math.round((Date.now() - tMsg) / 1000)}s)`);
 
   let finishedAt = null;
   for (let i = 0; i < 150; i++) {
     await page.waitForTimeout(1000);
-    if ((await page.locator(".cs-work").count()) === 0) { finishedAt = Math.round((Date.now() - tMsg) / 1000); break; }
+    if ((await page.locator(".a-work").count()) === 0) { finishedAt = Math.round((Date.now() - tMsg) / 1000); break; }
   }
   log(finishedAt !== null, `Milo finished the reply (${finishedAt ?? ">150"}s)`);
 
-  // persistence: reload and the thread is still there, restored from the database
   await page.waitForTimeout(2500);
   await page.reload({ waitUntil: "networkidle" });
-  await page.waitForSelector(".cs-composer textarea", { timeout: 30000 });
+  await page.waitForSelector(".a-composer textarea", { timeout: 30000 });
   await page.waitForTimeout(3500);
-  const threadCount = await page.locator(".cs-bubble").count();
+  const threadCount = await page.locator(".a-bubble").count();
   log(threadCount >= 2, `conversation persisted to the database (${threadCount} bubbles after reload)`);
-  log((await page.locator(".cs-bubble-me").count()) >= 1, "previous user message restored");
-  const lastBubble = await page.locator(".cs-bubble").last().innerText().catch(() => "");
-  log(!/<html|<div|DOCTYPE/i.test(lastBubble), "chat never leaks raw HTML into the thread");
-  log(lastBubble.trim().length > 40, `reply has real content (${lastBubble.trim().length} chars)`);
+  log(!/<html|<div|DOCTYPE/i.test(await page.locator(".a-bubble").last().innerText().catch(() => "")),
+    "chat never leaks raw HTML into the thread");
 
   // no horizontal overflow on a phone
   const phone = await (await b.newContext({

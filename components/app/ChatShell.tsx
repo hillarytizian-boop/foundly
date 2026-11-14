@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { MiloCloud } from "@/components/marketing/Mascot";
+import { GlowCloud } from "@/components/marketing/Mascot";
 
 export type ChatMsg = { role: "user" | "assistant"; content: string; id?: string };
 
@@ -10,6 +10,9 @@ type Props = {
   business?: string | null;
   initial?: ChatMsg[];
   compact?: boolean;
+  /** a first idea handed over from onboarding — sent as soon as the thread mounts */
+  autoSend?: string;
+  onComplete?: () => void;
 };
 
 type Status = "idle" | "connecting" | "thinking" | "writing" | "done" | "error";
@@ -25,7 +28,7 @@ const GREETING: ChatMsg = {
  * shown as live work with a running clock — so the wait is visible progress,
  * never a blank box.
  */
-export default function ChatShell({ business, initial, compact = false }: Props) {
+export default function ChatShell({ business, initial, compact = false, autoSend, onComplete }: Props) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMsg[]>(
     initial && initial.length ? initial : [GREETING]
@@ -43,6 +46,15 @@ export default function ChatShell({ business, initial, compact = false }: Props)
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   const busy = status === "connecting" || status === "thinking" || status === "writing";
+
+  const autoFired = useRef(false);
+  useEffect(() => {
+    if (!autoSend || autoFired.current) return;
+    autoFired.current = true;
+    const t = setTimeout(() => send(autoSend), 450);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSend]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -147,6 +159,7 @@ export default function ChatShell({ business, initial, compact = false }: Props)
         setStatus("done");
         setAnswer("");
         setTrace("");
+        onComplete?.();
         router.refresh();
       } else if (!error) {
         setStatus("idle");
@@ -175,22 +188,22 @@ export default function ChatShell({ business, initial, compact = false }: Props)
   ];
 
   return (
-    <div className={`cs ${compact ? "cs-compact" : ""}`}>
-      <div className="cs-scroll" ref={scrollRef}>
-        <div className="cs-thread">
+    <div className={`a ${compact ? "a-compact" : ""}`}>
+      <div className="a-scroll" ref={scrollRef}>
+        <div className="a-thread">
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <div className="cs-turn cs-me" key={i}>
-                <div className="cs-bubble cs-bubble-me">{m.content}</div>
+              <div className="a-turn a-me" key={i}>
+                <div className="a-bubble a-bubble-me">{m.content}</div>
               </div>
             ) : (
-              <div className="cs-turn" key={i}>
-                <div className="cs-ava"><MiloCloud /></div>
-                <div className="cs-bubble">
+              <div className="a-turn" key={i}>
+                <div className="a-ava"><GlowCloud /></div>
+                <div className="a-bubble">
                   {m === messages[0] ? (
                     <>
                       <b>Hi, I&apos;m Milo. What are we building?</b>
-                      <span className="cs-sub">One sentence is enough. I&apos;ll build the site, the brand and the outreach.</span>
+                      <span className="sub">One sentence is enough. I&apos;ll build the site, the brand and the outreach.</span>
                     </>
                   ) : (
                     <RichText text={m.content} />
@@ -202,26 +215,26 @@ export default function ChatShell({ business, initial, compact = false }: Props)
 
           {/* live work — the honest version of a loading state */}
           {busy && (
-            <div className="cs-turn">
-              <div className="cs-ava cs-ava-live"><MiloCloud /></div>
-              <div className="cs-work">
-                <div className="cs-work-head">
-                  <span className="cs-dot" />
+            <div className="a-turn">
+              <div className="a-ava"><GlowCloud /></div>
+              <div className="a-work">
+                <div className="a-work-head">
+                  <span className="a-dot" />
                   <span>
                     {status === "connecting" && "Reading your message"}
                     {status === "thinking" && "Thinking it through"}
                     {status === "writing" && "Writing the answer"}
                   </span>
-                  <span className="cs-clock">{elapsed}s</span>
+                  <span className="clock">{elapsed}s</span>
                 </div>
 
                 {answer ? (
-                  <div className="cs-bubble cs-bubble-live">
+                  <div className="a-bubble a-bubble-live">
                     <RichText text={answer} />
-                    <span className="cs-caret" />
+                    <span className="a-caret" />
                   </div>
                 ) : (
-                  <p className="cs-trace-label">
+                  <p className="a-trace-label">
                     {elapsed < 8
                       ? "Milo is picking up your message…"
                       : `Reasoning model — first words usually land around 60 seconds.`}
@@ -229,43 +242,43 @@ export default function ChatShell({ business, initial, compact = false }: Props)
                 )}
 
                 {trace && !answer && (
-                  <button className="cs-trace-toggle" onClick={() => setShowTrace((v) => !v)}>
+                  <button className="a-trace-btn" onClick={() => setShowTrace((v) => !v)}>
                     {showTrace ? "Hide" : "Show"} Milo&apos;s thinking
                   </button>
                 )}
                 {trace && showTrace && !answer && (
-                  <div className="cs-trace">{trace.slice(-900)}</div>
+                  <div className="a-trace">{trace.slice(-900)}</div>
                 )}
 
-                <button className="cs-stop" onClick={stop}>Stop</button>
+                <button className="a-stop" onClick={stop}>Stop</button>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="cs-turn">
-              <div className="cs-ava" style={{ background: "#fdeaea" }}>!</div>
-              <div className="cs-bubble cs-bubble-err">
+            <div className="a-turn">
+              <div className="a-ava">!</div>
+              <div className="a-bubble a-bubble-err">
                 <b>That didn&apos;t go through.</b>
                 <span>{error}</span>
-                <span className="cs-sub">Nothing was saved. Try again, or use a built-in task from the sidebar.</span>
+                <span className="sub">Nothing was saved. Try again, or use a built-in task from the sidebar.</span>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="cs-composer-wrap">
+      <div className="a-composer-wrap">
         {messages.length <= 1 && !busy && (
-          <div className="cs-starters">
+          <div className="a-starters">
             {starters.map((s) => (
-              <button key={s} className="cs-chip" onClick={() => send(s)}>{s}</button>
+              <button key={s} className="a-chip" onClick={() => send(s)}>{s}</button>
             ))}
           </div>
         )}
 
         <form
-          className="cs-composer"
+          className="a-composer"
           onSubmit={(e) => { e.preventDefault(); send(); }}
         >
           <textarea
@@ -280,7 +293,7 @@ export default function ChatShell({ business, initial, compact = false }: Props)
             aria-label="Message Milo"
           />
           <button
-            className={`cs-send${input.trim() && !busy ? " ready" : ""}`}
+            className={`a-send${input.trim() && !busy ? " ready" : ""}`}
             type="submit"
             disabled={!input.trim() || busy}
             aria-label="Send"
@@ -291,7 +304,7 @@ export default function ChatShell({ business, initial, compact = false }: Props)
             </svg>
           </button>
         </form>
-        <p className="cs-hint">Enter to send · Shift+Enter for a new line · nothing publishes without your OK</p>
+        <p className="a-hint-line">Enter to send · Shift+Enter for a new line · nothing publishes without your OK</p>
       </div>
     </div>
   );
@@ -309,10 +322,10 @@ function RichText({ text }: { text: string }) {
         <p>
           <b>{isHtml ? "That came back as a full page, not a chat reply." : "That came back as code."}</b>
         </p>
-        <p className="cs-sub" style={{ marginTop: 0 }}>
+        <p className="sub" style={{ marginTop: 0 }}>
           Milo should answer in plain language here — the page itself belongs in Build.
         </p>
-        <details className="cs-code">
+        <details className="a-trace">
           <summary>Show the raw output</summary>
           <pre>{text.slice(0, 4000)}</pre>
         </details>
@@ -327,7 +340,7 @@ function RichText({ text }: { text: string }) {
         const isList = lines.every((l) => /^\s*([-*•]|\d+\.)\s+/.test(l));
         if (isList) {
           return (
-            <ul key={bi} className="cs-list">
+            <ul key={bi} className="">
               {lines.map((l, li) => (
                 <li key={li}>{inline(l.replace(/^\s*([-*•]|\d+\.)\s+/, ""))}</li>
               ))}

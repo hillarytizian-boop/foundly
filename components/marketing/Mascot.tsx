@@ -126,3 +126,53 @@ export function WordSquiggle({ size = 17 }: { size?: number }) {
     </svg>
   );
 }
+
+/**
+ * The glowing cloud used inside the app. On a near-black page the mascot reads
+ * as a light source: a warm-white cumulus with a soft halo, exactly like the
+ * icon at the centre of foundable.com/home.
+ */
+export function GlowCloud({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 120 96" className={className} role="img" aria-label="Milo">
+      <defs>
+        <radialGradient id="gc-body" cx="46%" cy="34%" r="72%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="58%" stopColor="#fdfbff" />
+          <stop offset="100%" stopColor="#e8e4f5" />
+        </radialGradient>
+        <radialGradient id="gc-halo" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity=".55" />
+          <stop offset="55%" stopColor="#cbd6ff" stopOpacity=".22" />
+          <stop offset="100%" stopColor="#cbd6ff" stopOpacity="0" />
+        </radialGradient>
+        <filter id="gc-soft" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3.2" />
+        </filter>
+      </defs>
+
+      {/* halo */}
+      <circle cx="60" cy="50" r="46" fill="url(#gc-halo)" />
+
+      {/* body: three lobes + a flat belly */}
+      <g filter="url(#gc-soft)" opacity=".95">
+        <ellipse cx="44" cy="52" rx="27" ry="22" fill="#ffffff" opacity=".35" />
+        <ellipse cx="78" cy="50" rx="22" ry="19" fill="#ffffff" opacity=".3" />
+      </g>
+      <g fill="url(#gc-body)">
+        <circle cx="45" cy="45" r="24" />
+        <circle cx="74" cy="38" r="21" />
+        <circle cx="92" cy="54" r="16" />
+        <rect x="21" y="55" width="76" height="22" rx="11" />
+        <circle cx="30" cy="63" r="12" />
+      </g>
+
+      {/* closed, content eyes */}
+      <path d="M50 56c3-4.2 6.6-4.2 9.6 0" fill="none" stroke="#23242a" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M67 55c3-4.2 6.6-4.2 9.6 0" fill="none" stroke="#23242a" strokeWidth="3.2" strokeLinecap="round" />
+      {/* faint blush, like the reference */}
+      <ellipse cx="46" cy="64" rx="4.5" ry="2.6" fill="#ffc9d4" opacity=".5" />
+      <ellipse cx="81" cy="63" rx="4.5" ry="2.6" fill="#ffc9d4" opacity=".5" />
+    </svg>
+  );
+}

@@ -1,17 +1,19 @@
 "use client";
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { CAPABILITIES, getCapability } from "@/lib/capabilities";
+import { getCapability } from "@/lib/capabilities";
 import CapabilityRunner from "@/components/CapabilityRunner";
 import AppFrame from "@/components/app/AppFrame";
 import ChatShell, { type ChatMsg } from "@/components/app/ChatShell";
+import Onboarding from "@/components/app/Onboarding";
+import { GlowCloud } from "@/components/marketing/Mascot";
 
 type Task = { id: string; title: string; status: string; environment: string; credit_cost: number; created_at: string; kind: string };
-type Act = { id: string; message: string; created_at: string };
+type Me = { credits: number; plan: string; business_name: string | null };
 
-const TASK_BADGE: Record<string, { cls: string; label: string }> = {
+const TAG: Record<string, { cls: string; label: string }> = {
   done: { cls: "ok", label: "Done" },
   needs_approval: { cls: "wait", label: "Needs OK" },
   running: { cls: "go", label: "Running" },
@@ -22,146 +24,115 @@ const TASK_BADGE: Record<string, { cls: string; label: string }> = {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="page"><p className="muted">Loading…</p></div>}>
-      <WorkspaceHome />
+    <Suspense fallback={<div className="app"><div className="a-screen"><div className="a-splash"><GlowCloud className="a-cloud" /></div></div></div>}>
+      <Workspace />
     </Suspense>
   );
 }
 
-function WorkspaceHome() {
+function Workspace() {
   const params = useSearchParams();
   const selected = getCapability(params.get("run") || "");
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [acts, setActs] = useState<Act[]>([]);
-  const [me, setMe] = useState<{ credits: number; plan: string; business_name: string | null } | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [history, setHistory] = useState<ChatMsg[]>([]);
   const [ready, setReady] = useState(false);
+  const [firstRun, setFirstRun] = useState(false);
+  const [kicked, setKicked] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const [{ data: t }, { data: a }, { data: p }, { data: m }] = await Promise.all([
-      supabase.from("tasks").select("id,title,status,environment,credit_cost,created_at,kind").order("created_at", { ascending: false }).limit(8),
-      supabase.from("activity").select("id,message,created_at").order("created_at", { ascending: false }).limit(6),
+    if (!user) { setReady(true); return; }
+    const [{ data: t }, { data: p }, { data: m }] = await Promise.all([
+      supabase.from("tasks").select("id,title,status,environment,credit_cost,created_at,kind").order("created_at", { ascending: false }).limit(6),
       supabase.from("profiles").select("credits,plan,business_name").eq("id", user.id).maybeSingle(),
       supabase.from("milo_messages").select("id,role,content").order("created_at", { ascending: true }).limit(40),
     ]);
     setTasks((t as Task[]) ?? []);
-    setActs((a as Act[]) ?? []);
     setMe(p as any);
-    setHistory((m ?? []).map((r: any) => ({ role: r.role, content: r.content, id: r.id })) as ChatMsg[]);
+    const msgs = (m ?? []).map((r: any) => ({ role: r.role, content: r.content, id: r.id })) as ChatMsg[];
+    setHistory(msgs);
+    setFirstRun(msgs.length === 0 && !(p as any)?.business_name);
     setReady(true);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // A first idea typed on the onboarding screen opens the thread with it.
+  function startFromIdea(idea: string) {
+    setKicked(idea);
+    setFirstRun(false);
   }
-  useEffect(() => { load(); }, []);
+
+  if (!ready) {
+    return (
+      <AppFrame bare>
+        <div className="a-screen"><div className="a-splash"><GlowCloud className="a-cloud" /></div></div>
+      </AppFrame>
+    );
+  }
+
+  // First run: the reference's onboarding, one decision per screen.
+  // A deep link (?run=...) skips it — that is an explicit instruction.
+  if (firstRun && !kicked && !selected) {
+    return (
+      <AppFrame bare>
+        <Onboarding onIdea={startFromIdea} />
+      </AppFrame>
+    );
+  }
 
   const pending = tasks.filter((t) => t.status === "needs_approval");
-  const done = tasks.filter((t) => t.status === "done").length;
-  const suggestions = CAPABILITIES.filter((c) => c.env === "home").slice(0, 4);
 
+  // The conversation is the product. Same surface for first message and later.
   return (
     <AppFrame
-      title={me?.business_name ? me.business_name : "Your workspace"}
-      subtitle={
-        pending.length > 0
-          ? `${pending.length} waiting on your OK`
-          : me?.business_name
-            ? "Milo is ready when you are"
-            : "Say the idea — Milo takes it from there"
-      }
+      title={me?.business_name || "Milo"}
+      subtitle={pending.length ? `${pending.length} waiting on your OK` : "Your AI employee"}
       credits={me ? me.credits : null}
+      back="/"
+      showBack
     >
-      <div className="app-body">
-        <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
-          {selected && (
-            <div style={{ padding: "12px 16px 0" }}>
-              <div style={{ maxWidth: 720, margin: "0 auto" }}>
-                <div className="spread" style={{ marginBottom: 8 }}>
-                  <span className="eyebrow">Running · {selected.title}</span>
-                  <Link href="/workspace" className="small muted">Close</Link>
-                </div>
-                <CapabilityRunner capability={selected} onComplete={load} />
-              </div>
+      {selected && (
+        <div style={{ padding: "10px 14px 0" }}>
+          <div style={{ maxWidth: 620, margin: "0 auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "rgba(255,255,255,.4)" }}>
+                Running · {selected.title}
+              </span>
+              <Link href="/workspace" style={{ fontSize: 12.5, color: "rgba(255,255,255,.45)" }}>Close</Link>
             </div>
-          )}
-
-          {ready ? (
-            <ChatShell business={me?.business_name ?? null} initial={history} />
-          ) : (
-            <div className="cs"><div className="cs-scroll"><p className="small muted">Loading your thread…</p></div></div>
-          )}
+            <CapabilityRunner capability={selected} onComplete={load} />
+          </div>
         </div>
+      )}
 
-        <aside className="app-rail">
-          <div className="rail-card">
-            <h4>Waiting on you</h4>
-            {pending.length === 0 ? (
-              <p className="rail-empty">Nothing needs approval.</p>
-            ) : (
-              pending.map((t) => (
-                <Link key={t.id} href={t.environment === "run" ? "/workspace/run" : "/workspace/build"} className="rail-task" style={{ textDecoration: "none", color: "inherit" }}>
-                  <span className="grow">{t.title}</span>
-                  <span className="rail-pill wait">Review</span>
-                </Link>
-              ))
-            )}
-          </div>
+      <ChatShell
+        business={me?.business_name ?? null}
+        initial={history}
+        autoSend={kicked || undefined}
+        onComplete={load}
+      />
 
-          <div className="rail-card">
-            <h4>Recent work</h4>
-            {tasks.length === 0 ? (
-              <p className="rail-empty">Nothing yet — say the idea in chat and Milo starts.</p>
-            ) : (
-              tasks.slice(0, 5).map((t) => (
-                <div key={t.id} className="rail-task">
-                  <span className="grow">{t.title}</span>
-                  <span className={`rail-pill ${TASK_BADGE[t.status]?.cls ?? "go"}`}>
-                    {TASK_BADGE[t.status]?.label ?? t.status}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="rail-card">
-            <h4>Ask Milo to</h4>
-            {suggestions.map((c) => (
-              <Link key={c.kind} href={`/workspace?run=${c.kind}`} className="rail-task" style={{ textDecoration: "none", color: "inherit" }}>
-                <span className="grow">{c.title}</span>
-                <span style={{ fontSize: 11, color: "rgba(11,18,32,.35)" }}>{c.credits}c</span>
+      {!selected && (pending.length > 0 || tasks.length > 0) && (
+        <div style={{ borderTop: "1px solid rgba(255,255,255,.07)", padding: "10px 14px calc(10px + env(safe-area-inset-bottom))" }}>
+          <div style={{ maxWidth: 620, margin: "0 auto", display: "flex", gap: 8, overflowX: "auto" }}>
+            {pending.map((t) => (
+              <Link key={t.id} href={t.environment === "run" ? "/workspace/run" : "/workspace/build"} className="a-pill" style={{ textDecoration: "none" }}>
+                <span className="a-tag wait">Needs OK</span>
+                {t.title}
               </Link>
             ))}
-            <Link href="/workspace/build" className="rail-task" style={{ textDecoration: "none", color: "inherit" }}>
-              <span className="grow">Build the website</span>
-              <span style={{ fontSize: 11, color: "rgba(11,18,32,.35)" }}>›</span>
-            </Link>
+            {pending.length === 0 && tasks.slice(0, 3).map((t) => (
+              <span key={t.id} className="a-pill">
+                <span className={`a-tag ${TAG[t.status]?.cls ?? "go"}`}>{TAG[t.status]?.label ?? t.status}</span>
+                {t.title}
+              </span>
+            ))}
           </div>
-
-          <div className="rail-card">
-            <h4>Activity</h4>
-            {acts.length === 0 ? (
-              <p className="rail-empty">No activity yet.</p>
-            ) : (
-              acts.slice(0, 4).map((a) => (
-                <div key={a.id} className="rail-task">
-                  <span className="grow" title={a.message}>{a.message}</span>
-                  <span style={{ fontSize: 10.5, color: "rgba(11,18,32,.3)" }}>
-                    {new Date(a.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="rail-card" style={{ background: "#fafbfc" }}>
-            <h4>Steps done</h4>
-            <div style={{ height: 4, borderRadius: 999, background: "rgba(11,18,32,.08)", overflow: "hidden" }}>
-              <div style={{ width: `${Math.min(100, (done / 7) * 100)}%`, height: "100%", background: "#111318" }} />
-            </div>
-            <p className="rail-empty" style={{ marginTop: 7 }}>{done} of 7 · website, brand, outreach, payments</p>
-          </div>
-        </aside>
-      </div>
+        </div>
+      )}
     </AppFrame>
   );
 }

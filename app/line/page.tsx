@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import AppFrame from "@/components/app/AppFrame";
 import ChatShell, { type ChatMsg, useMiloHistory } from "@/components/app/ChatShell";
+import { GlowCloud } from "@/components/marketing/Mascot";
 import { createClient } from "@/lib/supabase/client";
 
-/** The full Milo chat, like opening a conversation with your AI employee. */
+/** The full Milo chat — the same dark surface, with nothing else on screen. */
 export default function LinePage() {
   const history = useMiloHistory();
-  const [me, setMe] = useState<{ credits: number; business_name: string | null } | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [business, setBusiness] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -16,23 +18,18 @@ export default function LinePage() {
       if (!user) return;
       const { data } = await supabase
         .from("profiles").select("credits,business_name").eq("id", user.id).maybeSingle();
-      setMe(data as any);
+      setCredits((data as any)?.credits ?? null);
+      setBusiness((data as any)?.business_name ?? null);
     })();
   }, []);
 
   return (
-    <AppFrame
-      title="Milo"
-      subtitle="Your AI employee · replies in about a minute"
-      credits={me ? me.credits : null}
-    >
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-        {history === null ? (
-          <div className="cs"><div className="cs-scroll"><p className="small muted">Loading your thread…</p></div></div>
-        ) : (
-          <ChatShell business={me?.business_name ?? null} initial={history as ChatMsg[]} />
-        )}
-      </div>
+    <AppFrame title={business || "Milo"} subtitle="Your AI employee" credits={credits} back="/workspace" showBack>
+      {history === null ? (
+        <div className="a-screen"><div className="a-splash"><GlowCloud className="a-cloud" /></div></div>
+      ) : (
+        <ChatShell business={business} initial={history as ChatMsg[]} />
+      )}
     </AppFrame>
   );
 }

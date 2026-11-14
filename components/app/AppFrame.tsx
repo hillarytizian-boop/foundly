@@ -1,35 +1,34 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { WordSquiggle } from "@/components/marketing/Mascot";
 
-const NAV = [
-  { href: "/workspace", label: "Home", icon: "M3 10.5 12 3l9 7.5M5.5 9.5V21h13V9.5" },
-  { href: "/workspace/build", label: "Build", icon: "M4 20V4h7l9 9-7 7H4Z" },
-  { href: "/workspace/run", label: "Run", icon: "M8 5v14l11-7L8 5Z" },
-  { href: "/workspace/docs", label: "Documents", icon: "M6 3h8l4 4v14H6V3Z" },
-  { href: "/workspace/integrations", label: "Connections", icon: "M9 7h6M9 17h6M6 12h12" },
-];
-
+/**
+ * Dark app chrome for the signed-in product. Deliberately minimal: the
+ * reference shows one idea per screen, so there is no persistent sidebar —
+ * only a back affordance, a small menu, and the page content.
+ */
 export default function AppFrame({
   children,
   title,
   subtitle,
   credits,
-  right,
+  back = "/workspace",
+  showBack = false,
+  bare = false,
 }: {
   children: React.ReactNode;
-  title: string;
+  title?: string;
   subtitle?: string;
-  credits?: number | string | null;
-  right?: React.ReactNode;
+  credits?: number | null;
+  back?: string;
+  showBack?: boolean;
+  bare?: boolean;
 }) {
-  const path = usePathname();
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  const [menu, setMenu] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -47,80 +46,86 @@ export default function AppFrame({
   }
 
   return (
-    <div className="app-shell">
-      <aside className={`app-side${open ? " open" : ""}`}>
-        <Link href="/" className="app-brand" onClick={() => setOpen(false)}>
-          <WordSquiggle size={16} />
-          Foundly
-        </Link>
-
-        <Link href="/workspace/build" className="app-new" onClick={() => setOpen(false)}>
-          <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> New build
-        </Link>
-
-        <div className="app-nav-label">Workspace</div>
-        {NAV.map((n) => (
-          <Link
-            key={n.href}
-            href={n.href}
-            onClick={() => setOpen(false)}
-            className={`app-item${path === n.href ? " on" : ""}`}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d={n.icon} />
-            </svg>
-            {n.label}
-          </Link>
-        ))}
-
-        <div className="app-side-foot">
-          <Link href="/line" className="app-item" onClick={() => setOpen(false)}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.9" strokeLinecap="round" aria-hidden>
-              <path d="M21 12a8 8 0 1 1-3.2-6.4" />
-            </svg>
-            Milo chat
-          </Link>
-          <button className="app-item" onClick={signOut} style={{ width: "100%", background: "none", border: 0, cursor: "pointer", font: "inherit", textAlign: "left" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M15 17l5-5-5-5M20 12H9M12 21H5V3h7" />
-            </svg>
-            Sign out
-          </button>
-          <div className="app-user">
-            <i>{(email ?? "M").slice(0, 1).toUpperCase()}</i>
-            <span>{email ?? "signed in"}</span>
-          </div>
-        </div>
-      </aside>
-
-      <main className="app-main">
-        <div className="app-top">
-          <button className="app-burger" aria-label="Menu" onClick={() => setOpen((v) => !v)}>
-            <svg width="19" height="13" viewBox="0 0 22 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
-              <path d="M1 1h20M1 7h20M1 13h20" />
-            </svg>
-          </button>
+    <div className="app">
+      {!bare && (showBack || title) && (
+        <header className="a-top">
+          {showBack ? (
+            <Link href={back} className="a-icon-btn" aria-label="Back">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+          ) : null}
           <div>
-            <h1>{title}</h1>
-            {subtitle && <div className="sub">{subtitle}</div>}
+            {title && <div className="t">{title}</div>}
+            {subtitle && <div className="s">{subtitle}</div>}
           </div>
-          <div className="right">
-            {right}
+          <div className="r">
             {credits !== null && credits !== undefined && (
-              <span className="app-credits">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <span className="a-pill">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
                   <circle cx="12" cy="12" r="9" />
                 </svg>
-                {credits} credits
+                {credits}
               </span>
             )}
+            <button className="a-icon-btn" aria-label="Menu" onClick={() => setMenu((v) => !v)}>
+              <svg width="16" height="4" viewBox="0 0 16 4" fill="currentColor" aria-hidden>
+                <circle cx="2" cy="2" r="1.6" /><circle cx="8" cy="2" r="1.6" /><circle cx="14" cy="2" r="1.6" />
+              </svg>
+            </button>
           </div>
+        </header>
+      )}
+
+      {menu && (
+        <div
+          role="menu"
+          style={{
+            position: "fixed", top: 56, right: 12, zIndex: 50, width: 218,
+            background: "#212123", border: "1px solid rgba(255,255,255,.1)",
+            borderRadius: 14, padding: 6, boxShadow: "0 22px 50px rgba(0,0,0,.55)",
+          }}
+        >
+          {[
+            ["Home", "/workspace"],
+            ["Build a site", "/workspace/build"],
+            ["Run", "/workspace/run"],
+            ["Documents", "/workspace/docs"],
+            ["Connections", "/workspace/integrations"],
+            ["Full chat", "/line"],
+          ].map(([label, href]) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setMenu(false)}
+              style={{
+                display: "block", padding: "10px 11px", borderRadius: 9, textDecoration: "none",
+                color: "#f0f0f2", fontSize: 14,
+              }}
+            >
+              {label}
+            </Link>
+          ))}
+          <div style={{ height: 1, background: "rgba(255,255,255,.08)", margin: "5px 3px" }} />
+          <div style={{ padding: "8px 11px", fontSize: 11.5, color: "rgba(255,255,255,.35)", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {email ?? ""}
+          </div>
+          <button
+            onClick={signOut}
+            style={{
+              display: "block", width: "100%", textAlign: "left", background: "none", border: 0,
+              padding: "10px 11px", borderRadius: 9, color: "#ff9d9d", fontSize: 14,
+              font: "inherit", cursor: "pointer",
+            }}
+          >
+            Sign out
+          </button>
         </div>
-        {children}
-      </main>
+      )}
+
+      {children}
     </div>
   );
 }
