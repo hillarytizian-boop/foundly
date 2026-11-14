@@ -625,3 +625,85 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 .mk-rowline b { display: flex; align-items: center; gap: 7px; }
 .mk-rowline b svg { color: #6ee7a8; flex: 0 0 auto; }
 .mk-footer { background: #fff; }
+
+/* ==================================================================
+   LEGAL PAGES — /privacy and /terms
+   ================================================================== */
+.lg-top { background: #f5f5f7; border-bottom: 1px solid rgba(11,18,32,.08); }
+.lg-top .mk-sky-nav { padding-top: 14px; padding-bottom: 14px; }
+.lg-wrap { max-width: 1120px; margin: 0 auto; padding: 40px 20px 70px; }
+@media (min-width: 900px) { .lg-wrap { padding: 56px 44px 90px; } }
+
+.lg-head { max-width: 720px; }
+.lg-eyebrow {
+  font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase;
+  color: rgba(11,14,20,.45); margin: 0 0 10px;
+}
+.lg-head h1 {
+  font-size: 32px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1;
+  margin: 0; color: #0b0e14;
+}
+@media (min-width: 760px) { .lg-head h1 { font-size: 44px; } }
+.lg-intro { font-size: 17px; line-height: 1.5; color: #4a5468; margin: 14px 0 0; }
+.lg-meta { font-size: 13px; color: rgba(11,14,20,.5); margin: 14px 0 0; }
+.lg-meta a { color: #0b0e14; text-decoration: underline; text-underline-offset: 2px; }
+
+.lg-grid { display: grid; grid-template-columns: 1fr; gap: 32px; margin-top: 34px; }
+@media (min-width: 900px) { .lg-grid { grid-template-columns: 232px 1fr; gap: 56px; margin-top: 44px; } }
+
+.lg-toc { align-self: start; }
+@media (min-width: 900px) { .lg-toc { position: sticky; top: 24px; } }
+.lg-toc-title {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(11,14,20,.4); margin: 0 0 10px;
+}
+.lg-toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.lg-toc a {
+  display: flex; gap: 9px; padding: 6px 0; font-size: 13.5px; line-height: 1.35;
+  color: #52607a; text-decoration: none; border-radius: 6px;
+}
+.lg-toc a:hover { color: #0b0e14; }
+.lg-toc a span { font-family: ui-monospace, monospace; font-size: 10.5px; color: rgba(11,14,20,.32); padding-top: 2px; }
+
+.lg-body { max-width: 720px; }
+.lg-body section { padding-bottom: 26px; margin-bottom: 26px; border-bottom: 1px solid rgba(11,18,32,.08); }
+.lg-body section:last-of-type { border-bottom: 0; }
+.lg-body h2 {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: 20px; font-weight: 650; letter-spacing: -.015em; color: #0b0e14; margin: 0 0 10px;
+}
+@media (min-width: 760px) { .lg-body h2 { font-size: 22px; } }
+.lg-body h2 span { font-family: ui-monospace, monospace; font-size: 11.5px; color: rgba(11,14,20,.3); font-weight: 600; }
+.lg-body p { font-size: 15.5px; line-height: 1.65; color: #46506a; margin: 0 0 12px; }
+.lg-body p:last-child { margin-bottom: 0; }
+.lg-body strong { color: #1a2130; font-weight: 650; }
+.lg-body a { color: #0b0e14; text-decoration: underline; text-underline-offset: 2px; }
+.lg-body ul { margin: 0 0 12px; padding-left: 18px; }
+.lg-body li { font-size: 15.5px; line-height: 1.65; color: #46506a; margin-bottom: 6px; }
+.lg-body li strong { color: #1a2130; }
+
+.lg-callout {
+  background: #fff; border: 1px solid rgba(11,18,32,.09); border-left: 3px solid #111318;
+  border-radius: 10px; padding: 14px 16px; margin: 0 0 12px;
+}
+.lg-callout p { margin: 0; font-size: 14.5px; }
+.lg-table { width: 100%; border-collapse: collapse; margin: 4px 0 14px; font-size: 14px; }
+.lg-table th {
+  text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(11,14,20,.45); font-weight: 700; padding: 0 10px 7px 0;
+  border-bottom: 1px solid rgba(11,18,32,.1);
+}
+.lg-table td { padding: 9px 10px 9px 0; border-bottom: 1px solid rgba(11,18,32,.06); color: #46506a; vertical-align: top; line-height: 1.5; }
+.lg-table td:first-child { color: #1a2130; font-weight: 600; white-space: nowrap; }
+.lg-foot { margin-top: 8px; }
+
+/* legal tables must never widen the phone layout */
+.lg-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 4px 0 14px; }
+.lg-table-wrap .lg-table { margin: 0; }
+@media (max-width: 560px) {
+  .lg-table { font-size: 13px; }
+  .lg-table td, .lg-table th { padding-right: 8px; }
+  .lg-table td:first-child { white-space: normal; }
+  .lg-wrap { padding-left: 16px; padding-right: 16px; }
+  .lg-body p, .lg-body li { font-size: 15px; }
+}

@@ -171,6 +171,29 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
     log((await page.title()).includes("Foundly"), `marketing ${p}`);
   }
 
+  // ── legal pages ──────────────────────────────────────────────
+  for (const [path, heading, mustMention] of [
+    ["/privacy", "Privacy Policy", ["Supabase", "NVIDIA", "Vercel", "Stripe", "your rights", "cookies"]],
+    ["/terms", "Terms of Service", ["AI output", "Credits", "liability", "Governing law", "approval"]],
+  ]) {
+    await page.goto(BASE + path, { waitUntil: "networkidle" });
+    await page.waitForTimeout(400);
+    const lt = await page.innerText("body");
+    log(lt.includes(heading), `${path} renders (${heading})`);
+    log(mustMention.every((m) => new RegExp(m, "i").test(lt)), `${path} covers the required topics`);
+    log((await page.locator(".lg-toc a").count()) >= 8, `${path} has a table of contents`);
+    log(/Last updated/i.test(lt), `${path} shows a last-updated date`);
+    log((await page.locator(".topbar").count()) === 0, `${path} suppresses the app pill nav`);
+    log(await page.locator(".mk-footer-grid").count() === 1, `${path} carries the marketing footer`);
+    log(!/undefined|TODO|lorem ipsum/i.test(lt), `${path} has no placeholder text`);
+  }
+
+  // footer links resolve to the real pages, not a placeholder
+  await page.goto(BASE + "/", { waitUntil: "networkidle" });
+  await page.waitForTimeout(400);
+  const legalHrefs = await page.$$eval(".mk-footer a", (as) => as.map((a) => a.getAttribute("href")));
+  log(legalHrefs.includes("/privacy") && legalHrefs.includes("/terms"), "footer links to /privacy and /terms");
+
   // homepage matches the foundable.com reference
   await page.goto(BASE + "/", { waitUntil: "networkidle" });
   await page.waitForTimeout(700);
