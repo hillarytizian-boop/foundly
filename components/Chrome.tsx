@@ -5,7 +5,7 @@ import TopBar from "./TopBar";
 // The marketing homepage brings its own header/footer, so the app pill nav and
 // the compact site footer are suppressed there. Every other route keeps them.
 // Routes that carry their own header and footer.
-const OWN_CHROME = ["/", "/privacy", "/terms"];
+const OWN_CHROME = ["/", "/privacy", "/terms", "/workspace", "/line"];
 
 export function TopBarGate() {
   const p = usePathname();

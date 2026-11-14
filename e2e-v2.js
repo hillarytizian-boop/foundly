@@ -127,13 +127,18 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   log(await postBtn.isDisabled(), "publish blocked until a channel is connected");
 
   // Home dashboard reflects work
+  await page.goto(`${BASE}/workspace?run=research.market`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
   await page.goto(`${BASE}/workspace`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => document.body.innerText.match(/Credits\s*\d+/), { timeout: 30000 }).catch(() => {});
   await page.waitForTimeout(600);
   t = await page.innerText("body");
-  log(/TASKS DONE|Tasks done/i.test(t), "home dashboard renders stats");
-  log(/credits\s*\d+/i.test(t) && !/credits\s*—/i.test(t), "credits loaded from profile");
-  await page.screenshot({ path: "/home/user/foundly/shot-home.png" });
+  // the workspace is now a chat-first surface
+  log((await page.locator(".app-shell").count()) === 1, "app shell renders after login");
+  log((await page.locator(".cs-composer textarea").count()) === 1, "chat composer rendered");
+  log(/What are we building/i.test(t), "Milo greets you in the thread");
+  log(/\d+ credits/.test(t), "credits badge loaded from profile");
+  log((await page.locator(".app-side .app-item").count()) >= 5, "sidebar navigation rendered");
 
   // model + harness status
   const mj = await page.evaluate(async (base) => {
@@ -287,6 +292,45 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   log(xStatus.connected === false, "rejected token saved nothing");
   log(xStatus.tokenConnect === true && Boolean(xStatus.guide), "provider advertises token path + guide");
   await page.keyboard.press("Escape");
+
+  // ── chat surface: optimistic send, live stream, persistence ──
+  await page.goto(`${BASE}/workspace`, { waitUntil: "networkidle" });
+  await page.waitForSelector(".cs-composer textarea", { timeout: 30000 });
+  await page.waitForTimeout(900);
+
+  const tMsg = Date.now();
+  await page.fill(".cs-composer textarea", "handmade candles for Nairobi homes");
+  await page.click(".cs-send");
+  await page.waitForTimeout(400);
+  log((await page.locator(".cs-bubble-me").count()) === 1,
+    `user message appears instantly (${Date.now() - tMsg}ms)`);
+  log((await page.locator(".cs-work-head").count()) === 1, "live work indicator while Milo thinks");
+
+  let sawProgress = false;
+  for (let i = 0; i < 40; i++) {
+    await page.waitForTimeout(500);
+    if ((await page.locator(".cs-trace, .cs-bubble-live").count()) > 0) { sawProgress = true; break; }
+  }
+  log(sawProgress, `streamed progress visible before the answer (${Math.round((Date.now() - tMsg) / 1000)}s)`);
+
+  let finishedAt = null;
+  for (let i = 0; i < 150; i++) {
+    await page.waitForTimeout(1000);
+    if ((await page.locator(".cs-work").count()) === 0) { finishedAt = Math.round((Date.now() - tMsg) / 1000); break; }
+  }
+  log(finishedAt !== null, `Milo finished the reply (${finishedAt ?? ">150"}s)`);
+
+  // persistence: reload and the thread is still there, restored from the database
+  await page.waitForTimeout(2500);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForSelector(".cs-composer textarea", { timeout: 30000 });
+  await page.waitForTimeout(3500);
+  const threadCount = await page.locator(".cs-bubble").count();
+  log(threadCount >= 2, `conversation persisted to the database (${threadCount} bubbles after reload)`);
+  log((await page.locator(".cs-bubble-me").count()) >= 1, "previous user message restored");
+  const lastBubble = await page.locator(".cs-bubble").last().innerText().catch(() => "");
+  log(!/<html|<div|DOCTYPE/i.test(lastBubble), "chat never leaks raw HTML into the thread");
+  log(lastBubble.trim().length > 40, `reply has real content (${lastBubble.trim().length} chars)`);
 
   // no horizontal overflow on a phone
   const phone = await (await b.newContext({
