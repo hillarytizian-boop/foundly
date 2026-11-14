@@ -1,5 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
+/**
+ * The served document is agent-generated HTML, so it is treated as untrusted
+ * output. Strip anything that can execute: scripts, inline handlers, and
+ * javascript:/data: URLs. The page is meant to be static marketing copy.
+ */
+function sanitizeHtml(html: string) {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<script\b[^>]*\/>/gi, "")
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, "")
+    .replace(/<embed\b[^>]*>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, "")
+    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, "")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh[^>]*>/gi, "");
+}
+
 // Public serving route: /s/<slug> renders the agent-built site.
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -32,12 +51,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       .bar{background:#fff4e5;border:1px solid #ffd9a8;color:#8a5200;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:20px;font-weight:600}
       iframe{width:100%;height:calc(100vh - 120px);border:1px solid rgba(20,26,32,.1);border-radius:12px;background:#fff}</style></head>
       <body><div class="bar">Draft preview — ${site.business_name}. This is not public yet. Publish it from Build to make it live.</div>
-      <iframe srcdoc="${site.html.replace(/"/g, "&quot;")}"></iframe></body></html>`,
+      <iframe sandbox srcdoc="${sanitizeHtml(site.html)
+        .replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}"></iframe></body></html>`,
       { status: 200, headers: { "content-type": "text/html; charset=utf-8" } }
     );
   }
 
-  return new Response(site.html, {
+  return new Response(sanitizeHtml(site.html), {
     status: 200,
     headers: {
       "content-type": "text/html; charset=utf-8",

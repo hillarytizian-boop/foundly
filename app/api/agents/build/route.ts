@@ -6,6 +6,7 @@ import {
 } from "@/lib/agents";
 import { adminClient } from "@/lib/tokens";
 import { isConfigured as llmConfigured, modelId } from "@/lib/nvidia";
+import { rateLimit } from "@/lib/ratelimit";
 
 // Each request makes at most ONE model call (reasoning calls take 60–240s).
 export const maxDuration = 300;
@@ -35,6 +36,14 @@ export async function POST(req: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Sign in to build a site" }, { status: 401 });
+
+    const limit = rateLimit(`build:${user.id}`, 10, 60_000);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: `Slow down — a build can start again in ${limit.retryAfter}s.` },
+        { status: 429, headers: { "retry-after": String(limit.retryAfter) } }
+      );
+    }
 
     const { data: profile } = await supabase.from("profiles").select("credits").eq("id", user.id).single();
     const balance = profile?.credits ?? 0;

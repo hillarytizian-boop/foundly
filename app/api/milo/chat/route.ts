@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { nvidiaChat, isConfigured, modelId } from "@/lib/nvidia";
 import { HARNESS_PREAMBLE } from "@/lib/harness";
+import { rateLimit } from "@/lib/ratelimit";
 
 export const maxDuration = 300;
 
@@ -11,6 +12,15 @@ export async function POST(req: Request) {
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Sign in first" }, { status: 401 });
+
+  const limit = rateLimit(`chat:${user.id}`, 30, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: `Slow down — try again in ${limit.retryAfter}s.` },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter) } }
+    );
+  }
 
   if (!isConfigured()) {
     return NextResponse.json({

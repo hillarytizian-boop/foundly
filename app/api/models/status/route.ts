@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { isConfigured, modelId, nvidiaChat, NVIDIA_BASE } from "@/lib/nvidia";
+import { createClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/ratelimit";
 
 // Reports whether the live model is wired, without ever exposing the key.
 export async function GET() {
@@ -17,6 +19,20 @@ export async function GET() {
 
 // A tiny probe so the UI can prove the model really answers.
 export async function POST(req: Request) {
+  // This endpoint spends real NVIDIA tokens, so it requires a signed-in user.
+  // Without this it is a free, unauthenticated LLM proxy on the public internet.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Sign in to use the live model" }, { status: 401 });
+
+  const limit = rateLimit(`model:${user.id}`, 20, 60_000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: `Slow down — try again in ${limit.retryAfter}s.` },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter) } }
+    );
+  }
+
   const { prompt } = await req.json().catch(() => ({ prompt: "" }));
   if (!prompt?.trim()) return NextResponse.json({ error: "prompt required" }, { status: 400 });
 
