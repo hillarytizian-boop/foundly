@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/tokens";
 import { PROVIDERS, isConfigured } from "@/lib/integrations";
+import { guideFor } from "@/lib/connect-guides";
 
 export async function GET() {
   const supabase = await createClient();
@@ -28,6 +29,10 @@ export async function GET() {
     account: (tokenMap.get(p.slug)?.account_label as string) ?? null,
     expiresAt: (tokenMap.get(p.slug)?.expires_at as string) ?? null,
     docs: p.docs,
+    guide: guideFor(p.slug) ?? null,
+    /** provider accepts a token you already hold, verified before saving */
+    tokenConnect: ["x", "linkedin", "facebook", "instagram", "tiktok", "slack", "gmail"].includes(p.slug),
+    envKeys: p.envKeys.id ? [p.envKeys.id, p.envKeys.secret] : [],
   }));
 
   return NextResponse.json({ providers, connectedCount: providers.filter((p) => p.connected).length });

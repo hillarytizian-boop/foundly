@@ -134,3 +134,99 @@ export async function publishTo(
       return { ok: false, error: `${slug} has no publishing support yet.` };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Account verification. Used when a token is pasted by hand, so a saved
+// connection is only ever recorded after the provider itself confirms it.
+// A rejected token returns the provider's real error — never a fake "connected".
+// ---------------------------------------------------------------------------
+
+export type VerifyResult = { ok: boolean; label?: string; error?: string };
+
+async function getJson(url: string, headers: Record<string, string> = {}) {
+  const res = await fetch(url, { headers });
+  const json = await res.json().catch(() => ({}));
+  return { res, json };
+}
+
+export async function verifyAccount(
+  slug: string,
+  token: string,
+  extra: { pageId?: string; igUserId?: string; channel?: string; to?: string } = {}
+): Promise<VerifyResult> {
+  try {
+    switch (slug) {
+      case "x": {
+        const { res, json } = await getJson("https://api.twitter.com/2/users/me", {
+          authorization: `Bearer ${token}`,
+        });
+        if (!res.ok) {
+          const raw = json.detail || json.title || `X rejected the token (${res.status})`;
+          if (/Application-Only/i.test(String(raw)) || /app-only/i.test(String(raw))) {
+            return {
+              ok: false,
+              error: "That is X's app-only Bearer token. Posting needs a user-context token: in your app's Keys and tokens tab, generate an Access Token + Secret with Read and Write permission and paste the access token instead.",
+            };
+          }
+          return { ok: false, error: String(raw) };
+        }
+        return { ok: true, label: json.data?.username ? `@${json.data.username}` : "connected" };
+      }
+
+      case "linkedin": {
+        const { res, json } = await getJson("https://api.linkedin.com/v2/userinfo", {
+          authorization: `Bearer ${token}`,
+        });
+        if (!res.ok) return { ok: false, error: json.message || `LinkedIn rejected the token (${res.status})` };
+        return { ok: true, label: json.name || json.email || "connected" };
+      }
+
+      case "facebook": {
+        if (!extra.pageId) return { ok: false, error: "Add your Facebook Page ID so posts know where to go." };
+        const { res, json } = await getJson(
+          `https://graph.facebook.com/v21.0/${extra.pageId}?fields=name&access_token=${encodeURIComponent(token)}`
+        );
+        if (!res.ok || json.error) return { ok: false, error: json.error?.message || `Facebook rejected the token (${res.status})` };
+        return { ok: true, label: json.name || "connected" };
+      }
+
+      case "instagram": {
+        if (!extra.igUserId) return { ok: false, error: "Add your Instagram Business account ID." };
+        const { res, json } = await getJson(
+          `https://graph.facebook.com/v21.0/${extra.igUserId}?fields=username&access_token=${encodeURIComponent(token)}`
+        );
+        if (!res.ok || json.error) return { ok: false, error: json.error?.message || `Instagram rejected the token (${res.status})` };
+        return { ok: true, label: json.username ? `@${json.username}` : "connected" };
+      }
+
+      case "tiktok": {
+        const { res, json } = await getJson(
+          "https://open.tiktokapis.com/v2/user/info/?fields=display_name",
+          { authorization: `Bearer ${token}` }
+        );
+        if (!res.ok || (json.error && json.error.code !== "ok"))
+          return { ok: false, error: json.error?.message || `TikTok rejected the token (${res.status})` };
+        return { ok: true, label: json.data?.user?.display_name || "connected" };
+      }
+
+      case "slack": {
+        const { json } = await getJson("https://slack.com/api/auth.test", { authorization: `Bearer ${token}` });
+        if (!json.ok) return { ok: false, error: json.error || "Slack rejected the token" };
+        return { ok: true, label: json.team ? `${json.user} @ ${json.team}` : json.user };
+      }
+
+      case "gmail": {
+        const { res, json } = await getJson("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+          authorization: `Bearer ${token}`,
+        });
+        if (!res.ok) return { ok: false, error: json.error?.message || `Gmail rejected the token (${res.status})` };
+        return { ok: true, label: json.emailAddress };
+      }
+
+      default:
+        return { ok: false, error: `${slug} does not support pasted tokens yet.` };
+    }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || "Could not reach the provider" };
+  }
+}

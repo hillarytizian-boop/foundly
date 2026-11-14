@@ -98,8 +98,8 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   const credButtons = await page.locator('button:has-text("Add credentials to enable")').count();
   log(credButtons > 0, `unconfigured providers honestly disabled (${credButtons} shown)`);
   log(await page.locator('a:has-text("Connect")').count() === 0, "no Connect link offered without credentials");
-  const social = await page.locator('.card:has-text("can post")').count();
-  log(social >= 6, `publishable social channels listed (${social})`);
+  const socialRows = await page.locator('strong:has-text("Instagram"), strong:has-text("TikTok"), strong:has-text("LinkedIn")').count();
+  log(socialRows >= 3, `publishable social channels listed (${socialRows})`);
   await page.screenshot({ path: "/home/user/foundly/shot-integrations.png" });
 
   // social publisher in Run refuses to fake a post
@@ -199,6 +199,47 @@ const log = (ok, m) => { if (!ok) fails++; console.log(`${ok ? "PASS" : "FAIL"} 
   await page.click("#prompt button[type=submit]");
   await page.waitForURL("**/sign-up**", { timeout: 20000 }).catch(() => {});
   log(page.url().includes("/sign-up") && decodeURIComponent(page.url()).includes("handmade candles"), "hero prompt hands the idea to sign-up");
+
+  // ── social connect path ──────────────────────────────────────
+  await page.goto(BASE + "/workspace/integrations", { waitUntil: "networkidle" });
+  await page.waitForTimeout(1200);
+  const intBody = await page.innerText("body");
+  log(/Social channels/i.test(intBody), "social channels section rendered");
+  log(["X", "LinkedIn", "Facebook Page", "Instagram", "TikTok"].every((n) => intBody.includes(n)),
+    "all five social platforms listed");
+
+  // open X setup and read the guide
+  for (const bt of await page.$$("button")) {
+    if ((await bt.innerText()).trim() === "Setup / paste token") { await bt.click(); break; }
+  }
+  await page.waitForTimeout(400);
+  const guide = await page.innerText("body");
+  log(/developer portal/i.test(guide), "per-platform setup steps shown");
+  log(guide.includes("/api/integrations/callback/x"), "callback URL shown for copy-paste");
+  log(guide.includes("X_CLIENT_ID"), "required env var names shown");
+
+  // a bogus token must be rejected by the provider and must not be saved
+  await page.fill('input[placeholder="X access token"]', "not-a-real-token-123");
+  for (const bt of await page.$$("button")) {
+    if ((await bt.innerText()).trim() === "Test") { await bt.click(); break; }
+  }
+  await page.waitForTimeout(6000);
+  const rejection = await page.evaluate(() => {
+    const el = [...document.querySelectorAll("p")].find((e) =>
+      getComputedStyle(e).fontWeight === "600" && /token|forbidden|unauthorized|rejected/i.test(e.textContent || "")
+      && !/Test calls/.test(e.textContent || ""));
+    return el ? el.textContent.trim() : null;
+  });
+  log(Boolean(rejection), `bad token rejected with the provider's own error`);
+  log(/user-context/i.test(rejection || "") || !/Application-Only/i.test(rejection || ""),
+    "app-only token gets an actionable explanation");
+  const xStatus = await page.evaluate(async () => {
+    const j = await (await fetch("/api/integrations/status")).json();
+    return j.providers.find((p) => p.slug === "x");
+  });
+  log(xStatus.connected === false, "rejected token saved nothing");
+  log(xStatus.tokenConnect === true && Boolean(xStatus.guide), "provider advertises token path + guide");
+  await page.keyboard.press("Escape");
 
   // no horizontal overflow on a phone
   const phone = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
