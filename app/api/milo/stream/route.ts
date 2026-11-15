@@ -63,6 +63,17 @@ export async function POST(req: Request) {
 
       const started = Date.now();
 
+      // Save the user's turn immediately. Waiting until the model finishes meant
+      // that closing the tab mid-reply lost BOTH turns, so a reload looked like
+      // the conversation had been wiped. The reply is appended when it lands.
+      try {
+        await supabase.from("milo_messages").insert({
+          user_id: user.id, role: "user", content: message.slice(0, 4000),
+        });
+      } catch {
+        /* persistence must never break the reply */
+      }
+
       if (!isConfigured()) {
         send({
           type: "error",
@@ -114,12 +125,11 @@ export async function POST(req: Request) {
       // Persist both turns so /line and the next visit show the real thread.
       if (user) {
         try {
-          await supabase.from("milo_messages").insert([
-            { user_id: user.id, role: "user", content: message.slice(0, 4000) },
-            ...(finalText
-              ? [{ user_id: user.id, role: "assistant", content: finalText.slice(0, 8000) }]
-              : []),
-          ]);
+          if (finalText) {
+            await supabase.from("milo_messages").insert({
+              user_id: user.id, role: "assistant", content: finalText.slice(0, 8000),
+            });
+          }
           await supabase.from("activity").insert({
             user_id: user.id,
             message: `Milo replied (${chatModelId()})`,
