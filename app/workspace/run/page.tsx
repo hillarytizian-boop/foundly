@@ -139,7 +139,7 @@ export default function RunPage() {
 }
 
 function SocialPublisher() {
-  const [channels, setChannels] = useState<{ slug: string; name: string; canPost: string | null; connected: boolean; configured: boolean }[]>([]);
+  const [channels, setChannels] = useState<{ slug: string; name: string; canPost: string | null; connected: boolean; configured: boolean; envKeys: string[] }[]>([]);
   const [slug, setSlug] = useState("");
   const [body, setBody] = useState("");
   const [extra, setExtra] = useState({ pageId: "", igUserId: "", imageUrl: "", channel: "", to: "" });
@@ -214,8 +214,16 @@ function SocialPublisher() {
             {current && !current.connected && (
               <a className="btn btn-sm btn-ghost" href="/workspace/integrations">Connect {current.name} first</a>
             )}
-            {body.length > 0 && <span className="small dim">{body.length} chars</span>}
           </div>
+
+          {current && !current.connected && (
+            <p className="small dim" style={{ margin: 0 }}>
+              {current.configured
+                ? `${current.name} is configured on this deployment but no account is linked yet — connect it in Integrations, then publish.`
+                : `${current.name} needs its app credentials first (${current.envKeys.length ? current.envKeys.join(" + ") : "no env vars required"}). Until then this channel stays disabled rather than pretending to post.`}
+            </p>
+          )}
+          {body.length > 0 && <span className="small dim">{body.length} chars</span>}
 
           {msg && (
             <p className="small" style={{ margin: 0, color: msg.kind === "ok" ? "var(--good)" : "var(--bad)", fontWeight: 600 }}>

@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Sign in to build a site" }, { status: 401 });
 
-    const limit = rateLimit(`build:${user.id}`, 10, 60_000);
+    const limit = await rateLimit(`build:${user.id}`, 10, 60_000);
     if (!limit.ok) {
       return NextResponse.json(
         { error: `Slow down — a build can start again in ${limit.retryAfter}s.` },

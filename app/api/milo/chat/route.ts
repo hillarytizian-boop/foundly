@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sign in first" }, { status: 401 });
 
-  const limit = rateLimit(`chat:${user.id}`, 30, 60_000);
+  const limit = await rateLimit(`chat:${user.id}`, 30, 60_000);
   if (!limit.ok) {
     return NextResponse.json(
       { error: `Slow down — try again in ${limit.retryAfter}s.` },

@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sign in to use the live model" }, { status: 401 });
 
-  const limit = rateLimit(`model:${user.id}`, 20, 60_000);
+  const limit = await rateLimit(`model:${user.id}`, 20, 60_000);
   if (!limit.ok) {
     return NextResponse.json(
       { error: `Slow down — try again in ${limit.retryAfter}s.` },

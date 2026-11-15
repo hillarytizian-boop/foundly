@@ -13,6 +13,25 @@ import { GlowCloud } from "@/components/marketing/Mascot";
 type Task = { id: string; title: string; status: string; environment: string; credit_cost: number; created_at: string; kind: string };
 type Me = { credits: number; plan: string; business_name: string | null };
 
+/** A local breadcrumb so first-run onboarding is shown once, not on every visit. */
+const FIRST_RUN_KEY = "foundly.onboarded";
+
+function hasLocalProgress() {
+  try {
+    return localStorage.getItem(FIRST_RUN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markLocalProgress() {
+  try {
+    localStorage.setItem(FIRST_RUN_KEY, "1");
+  } catch {
+    /* private mode — the server-side history check still applies */
+  }
+}
+
 const TAG: Record<string, { cls: string; label: string }> = {
   done: { cls: "ok", label: "Done" },
   needs_approval: { cls: "wait", label: "Needs OK" },
@@ -53,7 +72,10 @@ function Workspace() {
     setMe(p as any);
     const msgs = (m ?? []).map((r: any) => ({ role: r.role, content: r.content, id: r.id })) as ChatMsg[];
     setHistory(msgs);
-    setFirstRun(msgs.length === 0 && !(p as any)?.business_name);
+    // A user who already has any messages is not on their first run, full stop.
+    // Deriving this from history (not just business_name) means nobody gets
+    // dropped back onto the onboarding screen after their first conversation.
+    setFirstRun(msgs.length === 0 && !(p as any)?.business_name && !hasLocalProgress());
     setReady(true);
   }, []);
 
@@ -61,8 +83,17 @@ function Workspace() {
 
   // A first idea typed on the onboarding screen opens the thread with it.
   function startFromIdea(idea: string) {
+    markLocalProgress();
     setKicked(idea);
     setFirstRun(false);
+  }
+
+  // Once the thread has a reply the account has real history, so the onboarding
+  // gate must never come back — even if the message rows fail to load.
+  function afterThreadActivity() {
+    markLocalProgress();
+    setFirstRun(false);
+    load();
   }
 
   if (!ready) {
@@ -112,7 +143,7 @@ function Workspace() {
         business={me?.business_name ?? null}
         initial={history}
         autoSend={kicked || undefined}
-        onComplete={load}
+        onComplete={afterThreadActivity}
       />
 
       {!selected && (pending.length > 0 || tasks.length > 0) && (
