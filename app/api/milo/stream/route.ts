@@ -57,8 +57,20 @@ export async function POST(req: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      // The response can be closed underneath us (proxy restart, client tab
+      // closed, platform recycle). Writing to a closed controller throws
+      // "Invalid state: Controller is already closed", which used to abort the
+      // whole start() block mid-generation — so the reply was rendered from
+      // deltas but never saved. A dead socket must never stop the work or the
+      // persistence; it should only stop the delivery.
+      let closed = false;
       const send = (obj: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        } catch {
+          closed = true;
+        }
       };
 
       const started = Date.now();
@@ -97,6 +109,7 @@ export async function POST(req: Request) {
         : [];
 
       let finalText = "";
+      let partial = "";
 
       try {
         for await (const ev of nvidiaStream({
@@ -113,33 +126,54 @@ export async function POST(req: Request) {
           reasoningEffort: "low",
           timeoutMs: 285_000,
         })) {
-          if (ev.type === "done") finalText = ev.text;
+          // Remember the final text but DON'T emit "done" yet: the client uses it
+          // as the signal that the turn is complete, so the row has to be in the
+          // database first or an immediate reload races the insert and the reply
+          // appears to vanish.
+          if (ev.type === "done") { finalText = ev.text; continue; }
+          if (ev.type === "delta") partial += ev.text;
           send(ev);
         }
       } catch (e: any) {
+        // Keep whatever was generated: a partial answer that is saved is far
+        // better than a good answer that vanishes on reload.
+        if (partial) finalText = partial;
+        console.error("[milo/stream] generation failed:", e?.message ?? e);
         send({ type: "error", error: e?.message || "The stream ended unexpectedly." });
       } finally {
         clearInterval(beat);
       }
 
-      // Persist both turns so /line and the next visit show the real thread.
+      // Persist the reply before telling the client it is done.
+      //
+      // The previous `try { await ... } catch {}` was useless: supabase-js
+      // returns a { error } object rather than throwing, so a failed insert
+      // looked like success and the reply vanished on the next load. Check the
+      // error explicitly and, if the write fails, still deliver the text — but
+      // log it so a silent data loss can never hide again.
       if (user) {
         try {
           if (finalText) {
-            await supabase.from("milo_messages").insert({
+            const { error: writeError } = await supabase.from("milo_messages").insert({
               user_id: user.id, role: "assistant", content: finalText.slice(0, 8000),
             });
+            if (writeError) {
+              console.error("[milo/stream] assistant turn not saved:", writeError.message);
+            }
           }
-          await supabase.from("activity").insert({
+          const { error: actError } = await supabase.from("activity").insert({
             user_id: user.id,
             message: `Milo replied (${chatModelId()})`,
           });
-        } catch {
-          /* persistence must never break the reply */
+          if (actError) console.error("[milo/stream] activity not saved:", actError.message);
+        } catch (e: any) {
+          console.error("[milo/stream] persistence threw:", e?.message ?? e);
         }
       }
 
-      controller.close();
+      if (finalText) send({ type: "done", text: finalText });
+
+      try { controller.close(); } catch { /* already gone */ }
     },
   });
 
