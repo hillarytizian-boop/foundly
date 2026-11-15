@@ -56,6 +56,23 @@ export default function ChatShell({ business, initial, compact = false, autoSend
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSend]);
 
+  /**
+   * Adopt history that arrives after mount.
+   *
+   * `initial` is empty on the first render (the page is still fetching) and the
+   * real thread lands a moment later. useState only reads its seed once, so
+   * without this the conversation was silently dropped on every reload — the
+   * DB had the messages, the UI just never showed them. Guarded on "no local
+   * messages yet" so it can never clobber a reply that is already on screen.
+   */
+  useEffect(() => {
+    if (!initial || initial.length === 0) return;
+    setMessages((current) =>
+      current.length <= 1 && current[0]?.content === GREETING.content ? initial : current
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial?.length]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, answer, trace, status]);
