@@ -59,6 +59,21 @@ Only HSTS was present. Added via `next.config.mjs`: `X-Frame-Options: DENY`, `X-
 
 ---
 
+### 7. Options 3 and 4 from the report — applied
+
+- **Durable rate limiting.** Counters moved out of the per-instance `Map` into `public.rate_limits` with a `check_rate_limit()` function, so all instances share one quota. Migration applied to `uopplshaxbilbyrceddk`. Still fail-open on database error, which is intentional.
+- **Supabase auth reviewed and partially tightened** on `uopplshaxbilbyrceddk`: `jwt_exp` 3600 with refresh-token rotation on, signup rate limiting on, redirect allowlist pinned to `foundly-three.vercel.app` plus localhost. Left deliberately loose for a demo, and listed below as open: `mailer_autoconfirm: true` (signup is immediate and unverified), `password_min_length` 6, HIBP off, captcha off, and password change without the current password.
+
+### 8. Auth-gate and sign-out bugs found in the feature sweep
+
+Three genuine defects, none of which were security holes but all of which made the account look broken:
+
+- **`/workspace` had no server-side gate.** A signed-out visitor was shown the first-run onboarding screen — indistinguishable from a live account, with no way out. `middleware.ts` now redirects unauthenticated `/workspace*` to `/sign-in?returnTo=<original path>`, preserving the deep link.
+- **Post-auth navigation raced the session cookie.** Sign-in and sign-up used `router.push`, a soft RSC request, which could be issued before the auth cookie was written; the new middleware gate then bounced the user straight back to sign-in. Both now use a full document navigation (`window.location.assign`).
+- **Sign out was unreachable on the onboarding screen.** The header — the only route to the account menu — only rendered when a screen had a title, and onboarding has none. The header now renders on every non-bare screen.
+
+---
+
 ## Verified clean
 
 | Area | Result |
@@ -84,15 +99,15 @@ Only HSTS was present. Added via `next.config.mjs`: `X-Frame-Options: DENY`, `X-
 
 ## Still open — needs your decision
 
-1. **Rotate the GitHub PAT.** `ghp_ePfZ…` now authenticates for the REST API but is rejected for `git` operations. It is also in plaintext in this conversation's history. Treat it as compromised.
-2. **Rotate the NVIDIA key** once the PAT is rotated. It was pasted in plaintext earlier in the session. Nothing in the repo leaked it, but the transcript is not a secret store.
-3. **The rate limiter is per-instance and in-memory.** On serverless it resets with each cold start, so it is a speed bump, not a quota. Real protection needs Redis (Upstash) or Vercel's WAF. Say the word and I'll wire Upstash.
-4. **No CSP yet.** I left it off deliberately: Next.js needs nonces for its inline hydration bootstrap, and a wrong CSP silently breaks the app. Happy to add one with a nonce in `middleware.ts` and test it.
-5. **Supabase auth settings to tighten:**
-   - `mailer_autoconfirm: true` — anyone can sign up with an email they don't own. Fine for a demo, wrong for production.
-   - `password_min_length: 6` and `password_hibp_enabled: false` — weak, and no breached-password check.
-   - `security_update_password_require_current_password: false` — a stolen session can change the password without knowing the old one.
-   - `security_captcha_enabled: false` — no bot defence on signup.
-6. **`/s/<slug>` is publicly enumerable** by slug. Intended (they're public sites), but note slugs are guessable from business names, so don't use them for anything private.
+1. **Rotate the NVIDIA key.** It was pasted in plaintext earlier in the session. Nothing in the repo leaked it, but the transcript is not a secret store.
+2. **A GitHub PAT is needed to push from this environment at all.** Correcting an earlier claim in this document: a PAT *was* pasted mid-session and it never authenticated for either the REST API or `git`. Both failed, so no credential was ever confirmed working and nothing here was validated with it. The practical consequence is that `git push` from the sandbox currently fails (`could not read Username for 'https://github.com'`) and commits have to be pushed from a machine that holds credentials. Do not treat that PAT as a live secret; do treat it as dead.
+3. **`payments` and `credit_events` are still writable by clients.** Their `FOR ALL` policies let a signed-in user insert rows — forged payment records and forged credit grants. These should be read-only to clients with writes restricted to the service role.
+4. **No Origin/CSRF check in `middleware.ts`.** State-changing API routes rely on cookies plus Supabase's `SameSite` behaviour rather than an explicit same-origin assertion.
+5. **No CSP yet.** Deliberately: Next.js needs nonces for its inline hydration bootstrap, and a wrong CSP silently breaks the app. Needs a nonce in `middleware.ts` plus a real click-through test.
+6. **Stripe webhook verifies the signature and then does nothing** — it returns `{received:true}` without crediting. No payment can currently grant credits, which is safe, but the TODO is load-bearing for launch.
+7. **`/s/<slug>` is publicly enumerable** by slug. Intended (they're public sites), but note slugs are guessable from business names, so don't use them for anything private.
+8. **The in-memory fallback in `lib/ratelimit.ts` still resets per instance.** The primary path is durable (`rate_limits` + `check_rate_limit()` in Postgres, shared across instances), so this only bites when the database is unreachable — which is the deliberate fail-open case.
+9. **Cookie flags** are set by `@supabase/ssr` defaults. Worth confirming `Secure`/`SameSite` in the browser once you're on a custom domain.
+10. **`/s/<slug>` is publicly enumerable** by slug. Intended (they're public sites), but note slugs are guessable from business names, so don't use them for anything private.
 7. **Stripe webhook does nothing yet** — it verifies the signature then returns `{received:true}` without crediting. No payment can currently grant credits, which is safe, but the TODO is load-bearing for launch.
 8. **Cookie flags** are set by `@supabase/ssr` defaults. Worth confirming `Secure`/`SameSite` in the browser once you're on a custom domain.
