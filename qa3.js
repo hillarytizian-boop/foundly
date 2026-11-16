@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const B = 'http://127.0.0.1:3338';
+const B = 'http://127.0.0.1:3362';
 const R = [];
 const ok = (n, c, d = '') => R.push([c ? 'PASS' : 'FAIL', n, d]);
 (async () => {
@@ -25,9 +25,16 @@ const ok = (n, c, d = '') => R.push([c ? 'PASS' : 'FAIL', n, d]);
   await p.fill('textarea[aria-label="Your idea"]', 'a candle studio in Nairobi selling sets of three');
   const t0 = Date.now();
   await p.click('button:has-text("Continue")');
-  await p.waitForFunction(() => document.querySelectorAll('.a-bubble').length >= 3, null, { timeout: 60000 });
+  await p.waitForFunction(() => document.querySelectorAll('.a-bubble').length >= 3, null, { timeout: 120000 });
   ok('chat first reply', true, `${Date.now() - t0}ms`);
-  await p.waitForTimeout(2000);
+  // Wait for the TURN, not a fixed delay. Since Milo started calling tools, this
+  // first message can run a build, and reloading mid-turn shows a partial
+  // transcript — the old fixed 2s wait produced a phantom "history lost".
+  await p.waitForFunction(
+    () => !document.querySelector('.a-work') && !document.querySelector('.a-bubble-live'),
+    null, { timeout: 180000 }
+  );
+  await p.waitForTimeout(2500);
 
   // reload persistence
   await p.reload({ waitUntil: 'networkidle' });

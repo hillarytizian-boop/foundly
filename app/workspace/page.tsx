@@ -66,11 +66,16 @@ function Workspace() {
     const [{ data: t }, { data: p }, { data: m }] = await Promise.all([
       supabase.from("tasks").select("id,title,status,environment,credit_cost,created_at,kind").order("created_at", { ascending: false }).limit(6),
       supabase.from("profiles").select("credits,plan,business_name").eq("id", user.id).maybeSingle(),
-      supabase.from("milo_messages").select("id,role,content").order("created_at", { ascending: true }).limit(40),
+      supabase.from("milo_messages").select("id,role,content,steps").order("created_at", { ascending: true }).limit(40),
     ]);
     setTasks((t as Task[]) ?? []);
     setMe(p as any);
-    const msgs = (m ?? []).map((r: any) => ({ role: r.role, content: r.content, id: r.id })) as ChatMsg[];
+    const msgs = (m ?? []).map((r: any) => ({
+      role: r.role,
+      content: r.content,
+      id: r.id,
+      steps: Array.isArray(r.steps) && r.steps.length ? r.steps : undefined,
+    })) as ChatMsg[];
     setHistory(msgs);
     // A user who already has any messages is not on their first run, full stop.
     // Deriving this from history (not just business_name) means nobody gets

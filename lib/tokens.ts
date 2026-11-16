@@ -29,7 +29,7 @@ export async function saveToken(userId: string, slug: string, payload: {
   const provider = getProvider(slug);
   await admin.from("integrations").upsert({
     user_id: userId, slug, name: provider?.name ?? slug, category: provider?.category ?? "Other",
-    status: "connected", connected_at: new Date().toISOString(),
+    status: "connected", mode: "verified", connected_at: new Date().toISOString(),
   }, { onConflict: "user_id,slug" });
 }
 

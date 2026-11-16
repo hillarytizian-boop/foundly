@@ -37,7 +37,7 @@ export const CHAT_MODEL_DEFAULT = "nvidia/nemotron-3.5-bolt-e4b";
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 export type LlmResult =
-  | { ok: true; text: string; model: string; ms: number; reasoning?: string }
+  | { ok: true; text: string; model: string; ms: number; reasoning?: string; toolCalls?: ToolCall[] }
   | { ok: false; error: string; model: string; ms: number; configured: boolean };
 
 export function modelId() {
@@ -52,8 +52,30 @@ export function isConfigured() {
   return Boolean(process.env.NVIDIA_API_KEY?.trim());
 }
 
+export type ChatMessageWithTools =
+  | ChatMessage
+  | { role: "tool"; content: string; tool_call_id: string }
+  | { role: "assistant"; content: string | null; tool_calls: ToolCall[] };
+
+/** OpenAI-shaped function tool definition. */
+export type ToolDef = {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+};
+
+/** A tool call the model asked for. `arguments` is raw JSON text — parse defensively. */
+export type ToolCall = {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+};
+
 type CallOpts = {
-  messages: ChatMessage[];
+  messages: (ChatMessage | ChatMessageWithTools)[];
   maxTokens?: number;
   temperature?: number;
   timeoutMs?: number;
@@ -61,6 +83,8 @@ type CallOpts = {
   json?: boolean;
   /** "low" skips most of the model's thinking pass — measured 60s -> 15s */
   reasoningEffort?: "low" | "medium" | "high";
+  tools?: ToolDef[];
+  toolChoice?: "auto" | "none" | "required";
 };
 
 export async function nvidiaChat(opts: CallOpts): Promise<LlmResult> {
@@ -83,6 +107,10 @@ export async function nvidiaChat(opts: CallOpts): Promise<LlmResult> {
     stream: false,
   };
   if (opts.json) body.response_format = { type: "json_object" };
+  if (opts.tools?.length) {
+    body.tools = opts.tools;
+    body.tool_choice = opts.toolChoice ?? "auto";
+  }
 
   try {
     const res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
@@ -107,13 +135,17 @@ export async function nvidiaChat(opts: CallOpts): Promise<LlmResult> {
     const json = JSON.parse(raw);
     const msg = json?.choices?.[0]?.message ?? {};
     const text: string = msg.content ?? "";
-    if (!text.trim()) {
+    const calls: ToolCall[] | undefined = Array.isArray(msg.tool_calls) && msg.tool_calls.length
+      ? msg.tool_calls
+      : undefined;
+    // A tool-calling turn legitimately has null content — that is not a failure.
+    if (!text.trim() && !calls) {
       return {
         ok: false, model, ms, configured: true,
         error: `The model returned no content (finish_reason: ${json?.choices?.[0]?.finish_reason ?? "unknown"}).`,
       };
     }
-    return { ok: true, text, model, ms, reasoning: msg.reasoning_content || undefined };
+    return { ok: true, text, model, ms, reasoning: msg.reasoning_content || undefined, toolCalls: calls };
   } catch (e: any) {
     const ms = Date.now() - started;
     const timedOut = e?.name === "TimeoutError" || e?.name === "AbortError";
@@ -164,7 +196,7 @@ export function extractHtml(text: string): string | null {
 export type StreamEvent =
   | { type: "thinking"; text: string }
   | { type: "delta"; text: string }
-  | { type: "done"; text: string; reasoning: string; model: string; ms: number }
+  | { type: "done"; text: string; reasoning: string; model: string; ms: number; toolCalls?: ToolCall[] }
   | { type: "error"; error: string; model: string; ms: number };
 
 export async function* nvidiaStream(opts: CallOpts): AsyncGenerator<StreamEvent> {
@@ -188,6 +220,9 @@ export async function* nvidiaStream(opts: CallOpts): AsyncGenerator<StreamEvent>
     max_tokens: opts.maxTokens ?? 1200,
     stream: true,
     ...(opts.reasoningEffort ? { reasoning_effort: opts.reasoningEffort } : {}),
+    ...(opts.tools?.length
+      ? { tools: opts.tools, tool_choice: opts.toolChoice ?? "auto" }
+      : {}),
   });
 
   let res: Response;
@@ -222,6 +257,9 @@ export async function* nvidiaStream(opts: CallOpts): AsyncGenerator<StreamEvent>
   let buffer = "";
   let content = "";
   let reasoning = "";
+  // Tool calls stream in fragments: the first chunk carries id/name, later
+  // chunks append slices of the JSON arguments. They are keyed by `index`.
+  const toolCalls: ToolCall[] = [];
 
   while (true) {
     const { done, value } = await reader.read();
@@ -248,10 +286,25 @@ export async function* nvidiaStream(opts: CallOpts): AsyncGenerator<StreamEvent>
         content += delta.content;
         yield { type: "delta", text: delta.content };
       }
+      if (Array.isArray(delta.tool_calls)) {
+        for (const tc of delta.tool_calls) {
+          const i = typeof tc.index === "number" ? tc.index : toolCalls.length;
+          if (!toolCalls[i]) {
+            toolCalls[i] = { id: tc.id ?? `call-${i}`, type: "function", function: { name: "", arguments: "" } };
+          }
+          if (tc.id) toolCalls[i].id = tc.id;
+          if (tc.function?.name) toolCalls[i].function.name += tc.function.name;
+          if (tc.function?.arguments) toolCalls[i].function.arguments += tc.function.arguments;
+        }
+      }
     }
   }
 
-  if (!content.trim()) {
+  const calls = toolCalls.filter(Boolean);
+
+  // A turn that only asks for a tool has no prose. That is a complete turn, not
+  // a failure — the caller runs the tool and asks the model again.
+  if (!content.trim() && calls.length === 0) {
     yield {
       type: "error", model, ms: Date.now() - started,
       error: "The model finished without producing an answer. Try rephrasing, or run a built-in capability.",
@@ -259,5 +312,8 @@ export async function* nvidiaStream(opts: CallOpts): AsyncGenerator<StreamEvent>
     return;
   }
 
-  yield { type: "done", text: content, reasoning, model, ms: Date.now() - started };
+  yield {
+    type: "done", text: content, reasoning, model, ms: Date.now() - started,
+    toolCalls: calls.length ? calls : undefined,
+  };
 }

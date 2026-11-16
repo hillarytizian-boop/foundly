@@ -12,11 +12,11 @@ export async function GET() {
   const admin = adminClient();
   const [{ data: tokens }, { data: rows }] = await Promise.all([
     admin.from("integration_tokens").select("slug,account_label,expires_at").eq("user_id", user.id),
-    supabase.from("integrations").select("slug,status"),
+    supabase.from("integrations").select("slug,status,mode"),
   ]);
 
   const tokenMap = new Map((tokens ?? []).map((t: any) => [t.slug, t]));
-  const rowMap = new Map((rows ?? []).map((r: any) => [r.slug, r.status]));
+  const rowMap = new Map((rows ?? []).map((r: any) => [r.slug, r]));
 
   const providers = PROVIDERS.map((p) => ({
     slug: p.slug,
@@ -24,8 +24,10 @@ export async function GET() {
     category: p.category,
     canPost: p.canPost ?? null,
     configured: isConfigured(p),
-    connected: tokenMap.has(p.slug) || rowMap.get(p.slug) === "connected",
+    connected: tokenMap.has(p.slug) || rowMap.get(p.slug)?.status === "connected",
     viaOAuth: tokenMap.has(p.slug),
+    // "demo" means: recorded, visible to Milo, grants nothing. Never shown as real.
+    mode: tokenMap.has(p.slug) ? "verified" : (rowMap.get(p.slug)?.mode ?? null),
     account: (tokenMap.get(p.slug)?.account_label as string) ?? null,
     expiresAt: (tokenMap.get(p.slug)?.expires_at as string) ?? null,
     docs: p.docs,
