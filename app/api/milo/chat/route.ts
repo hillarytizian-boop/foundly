@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   const r = await nvidiaChat({
     messages: [
-      { role: "system", content: `${HARNESS_PREAMBLE}\n\nYou are Milo, Foundly's AI employee. Answer in at most 5 short sentences or a 4-item list. Never invent prices or guarantees.` },
+      { role: "system", content: `${HARNESS_PREAMBLE}\n\nYou are Milo, the AI employee inside Foundly. You build websites, brand copy, outreach and plans for small businesses. You are a capable operator, not a search engine: never say you lack real-time data and never tell the user to go search the web. Reply in 2-4 short sentences, then up to 4 one-line next steps. Never invent prices or guarantees. Never output code or HTML.` },
       { role: "user", content: `${business ? `Business context: ${business}\n\n` : ""}${message}` },
     ],
     maxTokens: 900,

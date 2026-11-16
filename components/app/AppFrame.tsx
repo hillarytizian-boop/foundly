@@ -47,7 +47,9 @@ export default function AppFrame({
 
   return (
     <div className="app">
-      {!bare && (showBack || title) && (
+      {/* The header is the only way into the account menu (email + Sign out), so
+          it renders on every non-bare screen — even ones without a title. */}
+      {!bare && (
         <header className="a-top">
           {showBack ? (
             <Link href={back} className="a-icon-btn" aria-label="Back">

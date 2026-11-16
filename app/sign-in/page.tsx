@@ -2,7 +2,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export default function SignIn() {
   return (
@@ -13,7 +13,6 @@ export default function SignIn() {
 }
 
 function SignInInner() {
-  const router = useRouter();
   const params = useSearchParams();
   const returnTo = params.get("returnTo") || "/workspace";
   const [email, setEmail] = useState("");
@@ -28,7 +27,10 @@ function SignInInner() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) setMsg(error.message);
-    else router.push(returnTo);
+    // Full document request, not a client-side push: the middleware gate reads
+    // the session cookie on the server, and a soft navigation can beat the
+    // cookie being written — which bounces the user straight back to sign-in.
+    else window.location.assign(returnTo);
   }
 
   return (

@@ -21,7 +21,18 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Anything under /workspace is account data. Without this gate a signed-out
+  // visitor lands on the onboarding screen — it looks like a live account and
+  // reads as "sign-in is broken". Send them to sign-in and come back after.
+  const { pathname, search } = request.nextUrl;
+  if (!user && pathname.startsWith("/workspace")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/sign-in";
+    url.search = `?returnTo=${encodeURIComponent(pathname + search)}`;
+    return NextResponse.redirect(url);
+  }
   return response;
 }
 

@@ -108,7 +108,7 @@ function Workspace() {
   // A deep link (?run=...) skips it — that is an explicit instruction.
   if (firstRun && !kicked && !selected) {
     return (
-      <AppFrame bare>
+      <AppFrame>
         <Onboarding onIdea={startFromIdea} />
       </AppFrame>
     );
