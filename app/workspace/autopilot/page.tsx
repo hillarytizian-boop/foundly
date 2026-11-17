@@ -78,12 +78,22 @@ export default function Autopilot() {
     e.preventDefault();
     if (!goal.trim()) return;
     setBusy(true);
+    // Adding a goal implies autopilot, so show it on from the click rather than
+    // after the round trip. Rolled back below if the save actually fails.
+    const wasOn = autonomy.enabled;
+    const needsOn = !wasOn;
+    if (needsOn) setAutonomy((a) => ({ ...a, enabled: true }));
     const res = await fetch("/api/milo/goals", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ op: "add", goal, why, cadence_hours: cadence }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) { setBusy(false); setMsg(j.error || "Could not save that."); return; }
+    if (!res.ok) {
+      if (needsOn) setAutonomy((a) => ({ ...a, enabled: wasOn }));
+      setBusy(false);
+      setMsg(j.error || "Could not save that.");
+      return;
+    }
 
     setGoal(""); setWhy("");
     setMsg("Goal added. Milo will start on the next cycle.");
@@ -92,11 +102,6 @@ export default function Autopilot() {
     // parallel with the reload. Awaiting the full round trip first left the page
     // showing "Autopilot is off" for a few seconds after the user had just been
     // told a goal was set.
-    const needsOn = !autonomy.enabled;
-    // Flip the switch on screen first. On a cold production round trip this took
-    // ~5s, and staring at "Autopilot is off" right after adding a goal reads as
-    // broken even when it is only slow.
-    if (needsOn) setAutonomy((a) => ({ ...a, enabled: true }));
     await Promise.all([
       needsOn
         ? fetch("/api/milo/goals", {
