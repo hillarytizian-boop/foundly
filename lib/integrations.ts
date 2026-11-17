@@ -195,6 +195,26 @@ export function redirectUri(origin: string, slug: string) {
   return `${origin}/api/integrations/callback/${slug}`;
 }
 
+/**
+ * Free-tier truths the UI must state rather than discover the hard way.
+ *
+ * X's API metering (verified 2026-11-17): the app's credentials here are valid
+ * and the OAuth consent screen works, but actually POSTing a tweet returns
+ * 402 "credits depleted" on an account with no paid API credits. Letting someone
+ * connect and only then discover that would be the same dishonesty as faking a
+ * connection, so the caveat travels with the provider.
+ */
+export const PROVIDER_CAVEATS: Record<string, { title: string; detail: string; level: "warn" | "info" }> = {
+  x: {
+    level: "warn",
+    title: "Connecting works. Posting needs paid API credits.",
+    detail:
+      "X now meters API usage. Signing in and granting access works on this app, but publishing a post returns " +
+      "402 \"credits depleted\" unless the X developer account has API credits. Foundly will show you that exact " +
+      "error rather than pretend the post went out.",
+  },
+};
+
 export function buildAuthorizeUrl(p: Provider, origin: string, state: string, verifier?: string) {
   const clientId = process.env[p.envKeys.id];
   if (!clientId) throw new Error(`${p.name} is not configured on this deployment`);

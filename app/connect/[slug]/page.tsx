@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getProvider, isConfigured } from "@/lib/integrations";
+import { getProvider, isConfigured, PROVIDER_CAVEATS } from "@/lib/integrations";
 import { guideFor } from "@/lib/connect-guides";
 import ConnectPanel from "@/components/app/ConnectPanel";
 
@@ -85,6 +85,7 @@ export default async function ConnectPage({ params }: { params: Promise<{ slug: 
         docs={provider.docs}
         callback={`/api/integrations/callback/${provider.slug}`}
         guide={guide}
+        caveat={PROVIDER_CAVEATS[provider.slug] ?? null}
       />
     </main>
   );

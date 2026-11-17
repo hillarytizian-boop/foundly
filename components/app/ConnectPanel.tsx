@@ -25,6 +25,7 @@ type Props = {
   docs: string;
   callback: string;
   guide: Guide;
+  caveat: { title: string; detail: string; level: "warn" | "info" } | null;
 };
 
 /**
@@ -228,6 +229,13 @@ export default function ConnectPanel(p: Props) {
               <p className="small muted" style={{ margin: "6px 0 12px" }}>
                 You&apos;ll see {p.name}&apos;s own consent screen. Foundly receives a token only after you approve it.
               </p>
+
+              {p.caveat && (
+                <div className="ap-caveat warn" style={{ marginBottom: 12 }}>
+                  <b>{p.caveat.title}</b>
+                  <span>{p.caveat.detail}</span>
+                </div>
+              )}
               <a className="btn btn-sm" href={`/api/integrations/start?slug=${p.slug}`}>
                 Continue to {p.name}
               </a>

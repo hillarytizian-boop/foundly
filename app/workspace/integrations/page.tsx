@@ -12,6 +12,7 @@ type P = {
   configured: boolean; connected: boolean; viaOAuth: boolean;
   account: string | null; docs: string; guide: Guide | null;
   tokenConnect: boolean; envKeys: string[];
+  caveat?: { title: string; detail: string; level: "warn" | "info" } | null;
 };
 
 export default function Page() {
@@ -224,7 +225,12 @@ function SocialRow({
           {p.account && <span className="small dim" style={{ overflow: "hidden", textOverflow: "ellipsis" }}>as {p.account}</span>}
         </div>
 
-        <div style={{ display: "flex", gap: 6, flex: "0 0 auto" }}>
+        <div style={{ flexDirection: "column", display: "flex", gap: 6, flex: "0 0 auto" }}>
+          {p.caveat && !p.connected && (
+            <p className="small" style={{ margin: "0 0 2px", color: "#d6a646", lineHeight: 1.45, maxWidth: 260 }}>
+              {p.caveat.title}
+            </p>
+          )}
           {p.configured && !p.connected && (
             <a className="btn btn-sm" href={`/api/integrations/start?slug=${p.slug}`}>Connect with OAuth</a>
           )}

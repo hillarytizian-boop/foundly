@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { adminClient } from "@/lib/tokens";
-import { PROVIDERS, isConfigured } from "@/lib/integrations";
+import { PROVIDERS, isConfigured, PROVIDER_CAVEATS } from "@/lib/integrations";
 import { guideFor } from "@/lib/connect-guides";
 
 export async function GET() {
@@ -31,6 +31,7 @@ export async function GET() {
     account: (tokenMap.get(p.slug)?.account_label as string) ?? null,
     expiresAt: (tokenMap.get(p.slug)?.expires_at as string) ?? null,
     docs: p.docs,
+    caveat: PROVIDER_CAVEATS[p.slug] ?? null,
     guide: guideFor(p.slug) ?? null,
     /** provider accepts a token you already hold, verified before saving */
     tokenConnect: ["x", "linkedin", "facebook", "instagram", "tiktok", "slack", "gmail"].includes(p.slug),
