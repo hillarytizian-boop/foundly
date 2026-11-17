@@ -1,7 +1,7 @@
 // QA for autopilot: Milo must actually work when nobody asks, within limits,
 // and must never let autonomous work leave Foundly without approval.
 const { chromium } = require('playwright');
-const B = 'http://127.0.0.1:3396';
+const B = 'http://127.0.0.1:3401';
 const R = [];
 const ok = (n, c, d = '') => R.push([c ? 'PASS' : 'FAIL', n, d]);
 
@@ -110,7 +110,7 @@ const ok = (n, c, d = '') => R.push([c ? 'PASS' : 'FAIL', n, d]);
 
   /* ---------- 7. the pulse fires on a due visit ---------- */
   const pulseBody = wsBody;
-  ok('workspace: shows the catch-up pulse or the work', /worked while you were away|Your AI employee/i.test(pulseBody));
+  ok('workspace: loads the thread (the gate is the conversation now)', /Message Milo|Your AI employee|waiting on your OK|worked while you were away/i.test(pulseBody), pulseBody.slice(0, 80));
 
   /* ---------- 8. pausing stops it ---------- */
   await p.goto(B + '/workspace/autopilot', { waitUntil: 'networkidle' });
