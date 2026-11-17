@@ -59,9 +59,9 @@ export default function AppFrame({
               </svg>
             </Link>
           ) : null}
-          <div>
-            {title && <div className="t">{title}</div>}
-            {subtitle && <div className="s">{subtitle}</div>}
+          <div style={{ minWidth: 0, flex: 1 }}>
+            {title && <div className="t" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>}
+            {subtitle && <div className="s" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subtitle}</div>}
           </div>
           <div className="r">
             {credits !== null && credits !== undefined && (

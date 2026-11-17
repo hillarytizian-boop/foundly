@@ -103,9 +103,11 @@ small, .small { font-size: 12.5px; }
 .topbar {
   position: sticky; top: 10px; z-index: 50;
   margin: 10px auto 0; max-width: 1180px; padding: 0 14px;
+  min-width: 0;
 }
 .topbar-inner {
   display: flex; align-items: center; gap: 10px;
+  min-width: 0; max-width: 100%;
   background: rgba(255,255,255,0.55);
   border: 1px solid var(--glass-border);
   border-radius: 999px;
@@ -121,7 +123,8 @@ small, .small { font-size: 12.5px; }
 }
 .brand-name { font-weight: 680; font-size: 14px; letter-spacing: -0.01em; }
 
-.navpill { display: flex; align-items: center; gap: 2px; margin: 0 auto; }
+.navpill { display: flex; align-items: center; gap: 2px; margin: 0 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.navpill::-webkit-scrollbar { display: none; }
 .navpill a {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 14px; border-radius: 999px; text-decoration: none;
@@ -131,7 +134,7 @@ small, .small { font-size: 12.5px; }
 .navpill a:hover { background: rgba(255,255,255,0.6); color: var(--ink); }
 .navpill a.active { background: #fff; color: var(--ink); box-shadow: var(--shadow-sm); font-weight: 640; }
 
-.topbar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.topbar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 0; }
 .iconbtn {
   width: 32px; height: 32px; border-radius: 999px; border: 0; cursor: pointer;
   background: rgba(255,255,255,0.5); display: grid; place-items: center;
@@ -181,11 +184,25 @@ label.field > span { display: block; font-size: 12px; font-weight: 600; color: v
 /* ---------- layout helpers ---------- */
 .page { max-width: 1180px; margin: 0 auto; padding: 22px 16px 56px; }
 .page-narrow { max-width: 960px; margin: 0 auto; padding: 28px 16px 56px; }
-.stack { display: grid; gap: 12px; }
-.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.grid-2 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-.grid-3 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.grid-4 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+/* Grid/flex children default to min-width:auto, so one wide child (a code
+   block, a long unbroken preview label) used to blow the whole page out
+   sideways on a phone. Every track now gets minmax(0, …) and every
+   in-flow child is allowed to shrink. */
+.stack { display: grid; gap: 12px; min-width: 0; }
+.stack > * { min-width: 0; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; min-width: 0; }
+.row > * { min-width: 0; }
+.grid-2 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
+.grid-3 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
+.grid-4 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); }
+.grid-2, .grid-3, .grid-4 { min-width: 0; }
+.grid-2 > *, .grid-3 > *, .grid-4 > * { min-width: 0; }
+
+/* Two-column work surfaces (build/run/docs). On a phone they collapse to one
+   column instead of holding a 320px+320px floor that overflows the viewport. */
+.split { display: grid; gap: 12px; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); min-width: 0; }
+.split > * { min-width: 0; }
+@media (max-width: 860px) { .split { grid-template-columns: minmax(0, 1fr); } }
 .spread { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 
 /* ---------- stat tiles ---------- */
@@ -310,7 +327,11 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 
 @media (max-width: 720px) {
   .navpill a span.lbl { display: none; }
-  .topbar-inner { gap: 6px; }
+  .navpill a { padding: 7px 10px; }
+  .topbar { padding: 0 10px; }
+  .topbar-inner { gap: 4px; padding: 5px 6px; }
+  .topbar-right .chip { display: none; }
+  .brand-name { display: none; }
   h1 { font-size: 23px; }
   .page { padding: 16px 12px 48px; }
 }
@@ -1072,6 +1093,7 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 }
 .a-top .t { font-size: 14px; font-weight: 600; }
 .a-top .s { font-size: 11.5px; color: var(--a-faint); }
+.a-top > div { min-width: 0; }
 .a-top .r { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .a-pill {
   display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600;
@@ -1303,7 +1325,7 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 /* ---------- landing: the roles strip ---------- */
 .roles-sec { padding: 64px 0; }
 .roles-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 14px; margin-top: 26px;
 }
 .roles-item {
@@ -1337,4 +1359,140 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 }
 .ap-caveat.info {
   border: 1px solid rgba(120,160,255,.32); background: rgba(120,160,255,.1); color: #cfe0ff;
+}
+
+/* ==================================================================
+   APP SURFACE TOKENS — every signed-in screen
+
+   The signed-in product is one dark surface (`.app` from AppFrame). These
+   tokens/aliases let Build, Run and Documents use the same palette and
+   controls as Home, Autopilot and Connections, so nothing falls back to the
+   pale marketing skin once you are inside the product.
+   ================================================================== */
+.app {
+  --s-card: #212123;
+  --s-card-2: #26262a;
+  --s-line: rgba(255, 255, 255, .09);
+  --s-line-2: rgba(255, 255, 255, .18);
+  --s-ink: #f2f2f4;
+  --s-dim: rgba(255, 255, 255, .64);
+  --s-faint: rgba(255, 255, 255, .4);
+  --s-good: #4ad39a;
+  --s-warn: #e0b25c;
+  --s-bad: #ff8f8f;
+  --s-accent: #8ab4ff;
+}
+.app main { flex: 1 0 auto; display: flex; flex-direction: column; min-width: 0; }
+.app .s-surface { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+/* ---- the one content column ---- */
+.s-body {
+  width: 100%; max-width: 620px; margin: 0 auto;
+  padding: 16px 14px calc(30px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 12px; min-width: 0;
+}
+.s-body-wide { max-width: 1000px; }
+.s-h1 { font-size: 24px; line-height: 1.22; letter-spacing: -.02em; margin: 0; color: #fff; font-weight: 520; }
+.s-lede { font-size: 13.5px; line-height: 1.6; color: var(--s-dim); margin: 0; }
+.s-eyebrow {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--s-faint);
+}
+.s-status { font-size: 12.5px; font-weight: 600; margin: 0; color: var(--s-faint); }
+.s-status.ok { color: var(--s-good); }
+
+/* ---- surfaces ---- */
+.s-card {
+  background: var(--s-card); border: 1px solid var(--s-line);
+  border-radius: 16px; overflow: hidden; min-width: 0;
+}
+.s-pad { padding: 15px; }
+.s-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 15px; border-bottom: 1px solid var(--s-line);
+  font-size: 12.5px; font-weight: 620; color: rgba(255, 255, 255, .78);
+}
+.s-head .go { color: var(--s-faint); font-weight: 560; font-size: 12px; }
+.s-title { font-size: 14.5px; font-weight: 600; color: #fff; margin: 0 0 10px; }
+.s-label { font-size: 11.5px; font-weight: 600; color: var(--s-faint); margin: 0 0 5px; }
+
+/* legacy heading/copy inside the app picks up app colours */
+.app h1, .app h2, .app h3, .app h4 { color: #fff; }
+.app .eyebrow { color: var(--s-faint); }
+.app .muted { color: var(--s-dim); }
+.app .dim { color: var(--s-faint); }
+.app .small, .app small { font-size: 12.5px; }
+.app .meta { font-size: 11.5px; color: var(--s-faint); margin-top: 2px; }
+
+/* ---- controls ---- */
+.app .field > span, .app label.field > span {
+  display: block; font-size: 11.5px; font-weight: 600; color: var(--s-faint); margin-bottom: 5px;
+}
+.app input, .app textarea, .app select {
+  width: 100%; font: inherit; font-size: 14px; color: var(--s-ink);
+  background: #171719; border: 1px solid var(--s-line-2); border-radius: 10px;
+  padding: 10px 12px; outline: none; transition: border-color .14s ease, box-shadow .14s ease;
+}
+.app input::placeholder, .app textarea::placeholder { color: rgba(255, 255, 255, .32); }
+.app input:focus, .app textarea:focus, .app select:focus {
+  border-color: rgba(138, 180, 255, .55); box-shadow: 0 0 0 3px rgba(138, 180, 255, .13);
+}
+.app select option { background: #171719; color: #f2f2f4; }
+
+.app .btn {
+  background: #f2f2f4; color: #111112; border: 1px solid transparent;
+  border-radius: 999px; padding: 11px 16px; font-size: 13.5px; font-weight: 620;
+}
+.app .btn:hover { background: #fff; opacity: 1; }
+.app .btn:disabled { opacity: .55; }
+.app .btn-sm { padding: 7px 12px; font-size: 12.5px; border-radius: 999px; }
+.app .btn-ghost { background: rgba(255, 255, 255, .07); color: var(--s-ink); border-color: var(--s-line-2); }
+.app .btn-ghost:hover { background: rgba(255, 255, 255, .13); }
+.app .btn-good { background: var(--s-good); color: #111112; border-color: transparent; }
+.app .btn-bad { background: transparent; color: var(--s-bad); border-color: rgba(255, 143, 143, .35); }
+
+.app .seg {
+  display: inline-flex; gap: 3px; padding: 3px; max-width: 100%; overflow-x: auto;
+  background: rgba(255, 255, 255, .06); border: 1px solid var(--s-line); border-radius: 999px;
+  scrollbar-width: none;
+}
+.app .seg::-webkit-scrollbar { display: none; }
+.app .seg button {
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; border: 0; background: none;
+  color: var(--s-dim); padding: 7px 13px; border-radius: 999px; white-space: nowrap;
+}
+.app .seg button.on { background: #f2f2f4; color: #111112; }
+
+.app .chip {
+  background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .14); color: rgba(255, 255, 255, .8);
+}
+.app .chip:hover { background: rgba(255, 255, 255, .13); }
+
+/* ---- rows / lists ---- */
+.app .rows { display: block; }
+.app .row-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 15px; border-top: 1px solid var(--s-line);
+  font-size: 13px; color: var(--s-ink); background: transparent;
+}
+.app .rows > .row-item:first-child { border-top: 0; }
+.app .row-item strong { font-weight: 600; }
+.app .spread { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.app .card { background: var(--s-card); border-color: var(--s-line); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.app .card-head { border-bottom-color: var(--s-line); color: rgba(255, 255, 255, .78); }
+.app .card-head .go { color: var(--s-faint); }
+.app .badge {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  font-size: 11px; font-weight: 620; padding: 3px 9px; border-radius: 999px;
+  background: rgba(255, 255, 255, .08); color: var(--s-dim);
+}
+.app .badge-done { background: rgba(74, 211, 154, .14); color: #7ee6bb; }
+.app .badge-wait { background: rgba(224, 178, 92, .16); color: #e8c98d; }
+.app .badge-idle { background: rgba(255, 255, 255, .07); color: var(--s-faint); }
+.app hr.sep { border-top-color: var(--s-line); }
+
+@media (max-width: 720px) {
+  .s-body { padding: 14px 12px calc(26px + env(safe-area-inset-bottom)); }
+  .s-h1 { font-size: 21px; }
+  .s-pad { padding: 13px; }
+  .s-head, .app .row-item { padding-left: 13px; padding-right: 13px; }
 }

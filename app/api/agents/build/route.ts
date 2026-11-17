@@ -191,9 +191,31 @@ export async function POST(req: Request) {
       } else {
         fallbackReason = `Live Strategist unavailable (${strat.error}) — the built-in team planned the page instead.`;
         if (mode === "live") {
+          // A bare error with no page is the worst possible outcome: the user
+          // waited minutes and got nothing. Live mode still refuses to pass off
+          // built-in copy as model output — but it now DELIVERS a real page and
+          // says plainly which team wrote it.
+          const built = buildSiteWithAgents(brief);
+          const base0 = slugify(brief.businessName?.trim() || "site") || "site";
+          const slug0 = await uniqueSlug(base0);
+          const { site, slug: finalSlug, error } = await insertSite({
+            user_id: user.id, business_name: name, idea: brief.idea,
+            content: { hero: brief.idea, sub: built.description, cta: "Order now", engine: "builtin", guardrails: built.guardrails, harness: { model: "built-in team", fallbackReason } } as any,
+            slug: slug0, html: built.html, published: false, agent_run: built.steps as any, score: built.score,
+          });
+          // Charging for a substituted result is not honest: the model never
+          // ran. The page is real, the user gets it, nobody is billed for it.
+          if (site) {
+            await supabase.from("activity").insert({ user_id: user.id, message: `Agent team built ${name} (built-in fallback, not charged) — quality score ${built.score}/100` });
+          }
           return NextResponse.json({
-            error: fallbackReason + " Live mode never substitutes invented output, so nothing was saved.",
-          }, { status: 502 });
+            ok: true, stage, complete: true, site_id: site?.id ?? null, slug: finalSlug,
+            score: built.score, steps: built.steps, engine: "builtin",
+            guardrails: built.guardrails, harness: built.harness,
+            fallback_reason: fallbackReason, balance,
+            charged: 0,
+            error: site ? undefined : error?.message,
+          }, { status: site ? 200 : 500 });
         }
       }
     }

@@ -21,6 +21,14 @@ export const NVIDIA_BASE = "https://integrate.api.nvidia.com/v1";
  *   meta/muse-glimmer-30b  reasoning model: ~0.7s to first reasoning token but
  *                        21-53s before it writes an answer. Too slow for chat.
  *
+ *   MEASURED 2026-11-17 on the build prompt (structured JSON copy):
+ *     nvidia/nemotron-3.5-bolt-e4b   4.4s total, 342ms to first byte
+ *     z-ai/glm-5.3-flash            193s on a good run; aborted at 300s on the
+ *                                   next two runs with reasoning_effort=low.
+ *   A build that has to finish inside a 300s function wall cannot be a coin
+ *   flip, so structured builds now default to the fast model. Reasoning models
+ *   remain available by setting NVIDIA_MODEL.
+ *
  *   Chat is deliberately NOT a reasoning model. Measured on this deployment:
  *     nvidia/nemotron-3.5-bolt-e4b         answer in ~0.25-0.35s
  *     meta/muse-glimmer-30b               answer in ~21-53s
@@ -31,7 +39,10 @@ export const NVIDIA_BASE = "https://integrate.api.nvidia.com/v1";
  *
  * NVIDIA_MODEL overrides the agent model, NVIDIA_CHAT_MODEL the chat model.
  */
-export const DEFAULT_MODEL = "z-ai/glm-5.3-flash";
+// The reasoning model, kept for anyone who sets NVIDIA_MODEL explicitly.
+export const REASONING_MODEL = "z-ai/glm-5.3-flash";
+// Default for structured agent work (site builds): 4s instead of 200s.
+export const DEFAULT_MODEL = "nvidia/nemotron-3.5-bolt-e4b";
 export const CHAT_MODEL_DEFAULT = "nvidia/nemotron-3.5-bolt-e4b";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };

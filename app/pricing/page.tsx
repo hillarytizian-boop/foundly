@@ -47,7 +47,7 @@ export default function Pricing() {
       </div>
 
       <div className="section" style={{ marginTop: 34 }}>
-        <div className="grid-2" style={{ gridTemplateColumns: "minmax(280px, 1fr) minmax(280px, 1fr)" }}>
+        <div className="split" style={{ gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)" }}>
           <div className="card">
             <div className="card-head"><span>What a credit buys</span><span className="go">cost per task</span></div>
             <div className="rows">

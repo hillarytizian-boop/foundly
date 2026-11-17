@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Surface from "@/components/app/Surface";
 
 type Guide = {
   slug: string; fastest: string; eta: string; needs: string; caveat?: string;
@@ -16,7 +17,7 @@ type P = {
 };
 
 export default function Page() {
-  return <Suspense fallback={<div className="page"><p className="muted">Loading…</p></div>}><Integrations /></Suspense>;
+  return <Suspense fallback={<Surface title="Connections"><p className="small muted">Loading…</p></Surface>}><Integrations /></Suspense>;
 }
 
 function Integrations() {
@@ -62,18 +63,15 @@ function Integrations() {
   const socials = providers.filter((p) => p.category === "Social" || p.category === "Video");
 
   return (
-    <div className="page">
-      <div className="spread">
-        <div>
-          <span className="eyebrow">Integrations</span>
-          <h1 style={{ margin: "2px 0 0", fontSize: 22 }}>Connect Milo to your tools</h1>
-          <p className="small muted" style={{ margin: "3px 0 0" }}>
-            {connectedCount} connected · {configuredCount} of {providers.length} providers ready on this deployment.
-          </p>
-        </div>
-        <input placeholder="Search apps…" value={filter.startsWith("__") ? "" : filter}
-          onChange={(e) => setFilter(e.target.value)} style={{ maxWidth: 220 }} />
+    <Surface title="Connections" back="/workspace">
+      <div style={{ minWidth: 0 }}>
+        <h1 className="s-h1">Connect Milo to your tools</h1>
+        <p className="s-lede">
+          {connectedCount} connected · {configuredCount} of {providers.length} providers ready on this deployment.
+        </p>
       </div>
+      <input placeholder="Search apps…" value={filter.startsWith("__") ? "" : filter}
+        onChange={(e) => setFilter(e.target.value)} />
 
       {banner && (
         <div className="card card-pad" style={{
@@ -168,7 +166,7 @@ function Integrations() {
           server-side only and are never sent to the browser.
         </p>
       </div>
-    </div>
+    </Surface>
   );
 }
 

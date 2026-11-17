@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Surface from "@/components/app/Surface";
 
 type Task = { id: string; title: string; kind: string; status: string; created_at: string; result: any };
 
@@ -27,12 +28,13 @@ export default function DocsPage() {
   }
 
   return (
-    <div className="page">
-      <span className="eyebrow">Documents</span>
-      <h1 style={{ margin: "2px 0 0", fontSize: 22 }}>Everything Milo has produced</h1>
-      <p className="small muted" style={{ margin: "3px 0 0" }}>Plans, briefs, decks, outreach and posts — stored, readable, exportable.</p>
+    <Surface title="Documents" back="/workspace" wide>
+      <div style={{ minWidth: 0 }}>
+        <h1 className="s-h1">Everything Milo has produced</h1>
+        <p className="s-lede">Plans, briefs, decks, outreach and posts — stored, readable, exportable.</p>
+      </div>
 
-      <div className="grid-2" style={{ marginTop: 12, gridTemplateColumns: "minmax(280px, 0.8fr) minmax(320px, 1.2fr)" }}>
+      <div className="split">
         <div className="card">
           <div className="card-head"><span>Library</span><span className="go">{docs.length}</span></div>
           {docs.length === 0 ? (
@@ -41,7 +43,7 @@ export default function DocsPage() {
             <div className="rows" style={{ maxHeight: 460, overflowY: "auto" }}>
               {docs.map((d) => (
                 <button key={d.id} onClick={() => setOpenId(d.id)} className="row-item" style={{
-                  width: "100%", border: 0, borderTop: "1px solid var(--line)", background: openId === d.id ? "rgba(255,255,255,0.9)" : "transparent",
+                  width: "100%", border: 0, borderTop: "1px solid var(--s-line)", background: openId === d.id ? "rgba(255,255,255,.06)" : "transparent",
                   cursor: "pointer", font: "inherit", textAlign: "left",
                 }}>
                   <div>
@@ -110,6 +112,6 @@ export default function DocsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </Surface>
   );
 }

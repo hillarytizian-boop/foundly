@@ -5,7 +5,7 @@ import {
   runGuardrails, blocked, research, fireInstincts, recallMemory, sanitizeClaims,
   strategistPrompt, builderPrompt, reviewerPrompt, SKILLS,
 } from "./harness";
-import { nvidiaChat, extractHtml, extractJson, isConfigured as llmConfigured, modelId } from "./nvidia";
+import { nvidiaChat, nvidiaStream, extractHtml, extractJson, isConfigured as llmConfigured, modelId } from "./nvidia";
 
 export type Brief = {
   businessName: string;
@@ -280,17 +280,51 @@ export type LiveStep = { step: AgentStep; copy?: any };
  */
 export async function strategistLive(
   brief: Brief,
-  timeoutMs = 280_000
+  timeoutMs = 280_000,
+  /** Called with the model's reasoning as it arrives, so a 200s call is not silent. */
+  onProgress?: (text: string) => void
 ): Promise<{ ok: true; copy: any; step: AgentStep; ms: number } | { ok: false; error: string; ms: number }> {
   if (!llmConfigured()) return { ok: false, error: "No model key configured.", ms: 0 };
   const t = Date.now();
-  const r = await nvidiaChat({
-    messages: [{ role: "user", content: strategistPrompt({ businessName: brief.businessName, idea: brief.idea, audience: brief.audience, price: brief.price, vibe: brief.vibe }) }],
-    // glm-5.3-flash spends ~6k tokens on hidden reasoning before answering,
-    // so a small max_tokens returns empty content. Budget for both.
-    maxTokens: 5000, timeoutMs, json: true,
-  });
-  if (!r.ok) return { ok: false, error: r.error, ms: r.ms };
+
+  /**
+   * STREAMING, NOT A SINGLE FETCH. These are reasoning models: they think for
+   * 60–280s before writing a byte. A non-streaming request sends no bytes at
+   * all for that whole time, and both nginx (60s) and Vercel's function
+   * wall (300s) kill a silent connection — measured here as a bare 502/504
+   * with no JSON body at all, which the screen could only report as
+   * "Could not reach the build service".
+   *
+   * Streaming makes the socket live from the first reasoning token, so the
+   * proxy never sees an idle connection, and the reasoning doubles as real
+   * progress for the UI.
+   */
+  let text = "";
+  let model = modelId();
+  let failed: string | null = null;
+  let ms = 0;
+  try {
+    for await (const ev of nvidiaStream({
+      messages: [{ role: "user", content: strategistPrompt({ businessName: brief.businessName, idea: brief.idea, audience: brief.audience, price: brief.price, vibe: brief.vibe }) }],
+      maxTokens: 5000, timeoutMs, model,
+      // Measured on the NVIDIA endpoint: full thinking took 193s on one run
+      // and blew past 280s on the next, so a "live" build was a coin flip.
+      // This task is structured copywriting, not open reasoning — low effort
+      // cuts the hidden thinking to ~15-30s and the JSON still comes back whole.
+      reasoningEffort: "low",
+    })) {
+      if (ev.type === "thinking") { onProgress?.(ev.text); continue; }
+      if (ev.type === "delta") { text += ev.text; continue; }
+      if (ev.type === "done") { text = ev.text; model = ev.model; ms = ev.ms; continue; }
+      if (ev.type === "error") { failed = ev.error; ms = ev.ms; }
+    }
+  } catch (e: any) {
+    failed = e?.message ?? "stream failed";
+  }
+  if (failed || !text.trim()) {
+    return { ok: false, error: failed || "The model finished without writing any copy.", ms: ms || Date.now() - t };
+  }
+  const r = { ok: true as const, text, model, ms: ms || Date.now() - t, reasoning: undefined as string | undefined };
 
   const copy = extractJson<any>(r.text);
   if (!copy?.headline) {

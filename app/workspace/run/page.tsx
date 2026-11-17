@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CAPABILITIES } from "@/lib/capabilities";
 import { createClient } from "@/lib/supabase/client";
 import CapabilityRunner from "@/components/CapabilityRunner";
+import Surface from "@/components/app/Surface";
 
 type Automation = { id: string; name: string; kind: string; cadence_hours: number; autopilot: boolean; enabled: boolean; next_run_at: string };
 type Task = { id: string; title: string; status: string; kind: string; result: any; created_at: string };
@@ -56,12 +57,11 @@ export default function RunPage() {
   }
 
   return (
-    <div className="page">
+    <Surface title="Run" back="/workspace" wide>
       <div className="spread">
-        <div>
-          <span className="eyebrow">Run</span>
-          <h1 style={{ margin: "2px 0 0", fontSize: 22 }}>Milo keeps working</h1>
-          <p className="small muted" style={{ margin: "3px 0 0" }}>Marketing, outreach, support and reviews — on a schedule, with approval gates where it matters.</p>
+        <div style={{ minWidth: 0 }}>
+          <h1 className="s-h1">Milo keeps working</h1>
+          <p className="s-lede">Marketing, outreach, support and reviews — on a schedule, with approval gates where it matters.</p>
         </div>
         <div className="seg">
           {caps.map((c) => (
@@ -70,8 +70,8 @@ export default function RunPage() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginTop: 12, gridTemplateColumns: "minmax(300px, 1fr) minmax(320px, 1fr)" }}>
-        <CapabilityRunner capability={active} onComplete={load} />
+      <div className="split">
+        <div className="s-card s-pad"><CapabilityRunner capability={active} onComplete={load} /></div>
 
         <div className="stack">
           <div className="card">
@@ -120,7 +120,7 @@ export default function RunPage() {
                     </div>
                     <div className="row" style={{ gap: 5 }}>
                       <button className="btn btn-sm btn-ghost" onClick={() => toggle(a.id, "autopilot", !a.autopilot)}
-                        style={a.autopilot ? { background: "var(--good)", color: "#fff", borderColor: "var(--good)" } : undefined}>
+                        style={a.autopilot ? { background: "#4ad39a", color: "#111112", borderColor: "transparent" } : undefined}>
                         Autopilot {a.autopilot ? "on" : "off"}
                       </button>
                       <button className="btn btn-sm btn-ghost" onClick={() => toggle(a.id, "enabled", !a.enabled)}>
@@ -134,7 +134,7 @@ export default function RunPage() {
           </div>
         </div>
       </div>
-    </div>
+    </Surface>
   );
 }
 
@@ -226,7 +226,7 @@ function SocialPublisher() {
           {body.length > 0 && <span className="small dim">{body.length} chars</span>}
 
           {msg && (
-            <p className="small" style={{ margin: 0, color: msg.kind === "ok" ? "var(--good)" : "var(--bad)", fontWeight: 600 }}>
+            <p className="small" style={{ margin: 0, color: msg.kind === "ok" ? "var(--s-good)" : "var(--s-bad)", fontWeight: 600 }}>
               {msg.text} {msg.url && <a href={msg.url} target="_blank" rel="noreferrer">View post ↗</a>}
             </p>
           )}

@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const B = 'http://127.0.0.1:3374';
+const B = 'http://127.0.0.1:3396';
 const R = [];
 const ok = (n, c, d = '') => R.push([c ? 'PASS' : 'FAIL', n, d]);
 (async () => {
