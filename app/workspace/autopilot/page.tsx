@@ -93,6 +93,10 @@ export default function Autopilot() {
     // showing "Autopilot is off" for a few seconds after the user had just been
     // told a goal was set.
     const needsOn = !autonomy.enabled;
+    // Flip the switch on screen first. On a cold production round trip this took
+    // ~5s, and staring at "Autopilot is off" right after adding a goal reads as
+    // broken even when it is only slow.
+    if (needsOn) setAutonomy((a) => ({ ...a, enabled: true }));
     await Promise.all([
       needsOn
         ? fetch("/api/milo/goals", {
@@ -102,7 +106,6 @@ export default function Autopilot() {
         : Promise.resolve(),
       load(),
     ]);
-    if (needsOn) setAutonomy((a) => ({ ...a, enabled: true }));
     setBusy(false);
   }
 
