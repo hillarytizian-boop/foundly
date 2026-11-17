@@ -122,10 +122,10 @@ export default function BuildPage() {
     setLive({
       done: [],
       active: "Strategist",
-      note: live0 ? "Waking the model — this stage takes 1–4 minutes." : "Writing the copy.",
+      note: live0 ? "Asking the model to write the copy." : "Writing the copy.",
     });
     setNote(live0
-      ? "Live model: the Strategist is a reasoning call, then the Builder, Reviewer and Publisher run here. Stages report as they land."
+      ? "Live model: the Strategist writes the copy, then the Builder, Reviewer and Publisher run here. Each stage reports as it lands."
       : "Built-in team running. Instant, no model calls.");
 
     try {
@@ -143,7 +143,7 @@ export default function BuildPage() {
       } catch (e: any) {
         setBusy(false);
         setErr(e?.name === "AbortError"
-          ? "The model didn't answer in 4 minutes. Nothing was charged twice — the draft (if any) is saved; press Build again to continue."
+          ? "The model didn't answer in 4 minutes. Nothing was saved and nothing extra was charged; press Build again."
           : "Could not reach the build service. Check your connection and try again.");
         await fetchSites();
         return;
@@ -277,7 +277,7 @@ export default function BuildPage() {
                 </button>
                 <p className="small dim" style={{ margin: 0, lineHeight: 1.55 }}>
                   {mode === "auto"
-                    ? "Live: the model writes the copy first (1–4 min), then the built-in Builder, Reviewer and Publisher finish the page. If the model is unavailable it falls back and says so — it never fakes a live run."
+                    ? "Live: the model writes the copy (about 10–20 seconds), then the Builder, Reviewer and Publisher finish the page. If the model is unavailable it falls back, says so, and charges nothing."
                     : "Built-in team. About ten seconds, no model calls, same four agents and same guardrails."}
                 </p>
                 {note && <p className="small" style={{ margin: 0, color: /unavailable|fallback|built-in team planned/i.test(note) ? "var(--s-warn)" : "var(--s-dim)" }}>{note}</p>}
