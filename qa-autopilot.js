@@ -1,7 +1,7 @@
 // QA for autopilot: Milo must actually work when nobody asks, within limits,
 // and must never let autonomous work leave Foundly without approval.
 const { chromium } = require('playwright');
-const B = 'http://127.0.0.1:3368';
+const B = 'http://127.0.0.1:3371';
 const R = [];
 const ok = (n, c, d = '') => R.push([c ? 'PASS' : 'FAIL', n, d]);
 

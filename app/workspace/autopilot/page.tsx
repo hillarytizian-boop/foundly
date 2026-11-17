@@ -83,12 +83,27 @@ export default function Autopilot() {
       body: JSON.stringify({ op: "add", goal, why, cadence_hours: cadence }),
     });
     const j = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (!res.ok) { setMsg(j.error || "Could not save that."); return; }
+    if (!res.ok) { setBusy(false); setMsg(j.error || "Could not save that."); return; }
+
     setGoal(""); setWhy("");
     setMsg("Goal added. Milo will start on the next cycle.");
-    await load();
-    if (!autonomy.enabled) await toggle();
+
+    // A goal is useless unless autopilot is on, so turn it on — but do it in
+    // parallel with the reload. Awaiting the full round trip first left the page
+    // showing "Autopilot is off" for a few seconds after the user had just been
+    // told a goal was set.
+    const needsOn = !autonomy.enabled;
+    await Promise.all([
+      needsOn
+        ? fetch("/api/milo/goals", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ op: "autonomy", enabled: true }),
+          })
+        : Promise.resolve(),
+      load(),
+    ]);
+    if (needsOn) setAutonomy((a) => ({ ...a, enabled: true }));
+    setBusy(false);
   }
 
   async function setStatus(id: string, status: string) {
