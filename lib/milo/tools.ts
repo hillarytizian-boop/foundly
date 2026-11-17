@@ -578,6 +578,124 @@ export const TOOLS: Tool[] = [
     },
   },
 
+  /* ------------------------------------------------------------------ */
+  /* Autonomy — what Milo does when nobody is watching                   */
+  /* ------------------------------------------------------------------ */
+  {
+    def: {
+      type: "function",
+      function: {
+        name: "add_goal",
+        description:
+          "Give Milo a standing goal it works on by itself, on a schedule, without being asked again. Use whenever the user says to keep doing something, work on something continuously, or 'every day/week'.",
+        parameters: {
+          type: "object",
+          properties: {
+            goal: { type: "string", description: "What Milo should keep working towards, in one sentence" },
+            why: { type: "string", description: "Why it matters, if they said so" },
+            cadence_hours: {
+              type: "number",
+              description: "How often to work on it. 24 = daily, 168 = weekly, 6 = a few times a day. Default 24.",
+            },
+          },
+          required: ["goal"],
+        },
+      },
+    },
+    async run(args, ctx, emit) {
+      const goal = String(args.goal ?? "").trim();
+      if (!goal) return { ok: false, summary: "I need to know what to work towards." };
+      const cadence = Math.min(168, Math.max(1, Number(args.cadence_hours) || 24));
+      emit({ label: "Setting a standing goal", detail: `every ${cadence}h` });
+
+      const { data, error } = await ctx.supabase.from("milo_goals").insert({
+        user_id: ctx.userId,
+        goal: goal.slice(0, 300),
+        why: args.why ? String(args.why).slice(0, 300) : null,
+        cadence_hours: cadence,
+        next_run_at: new Date().toISOString(),
+      }).select().single();
+      if (error) return { ok: false, summary: `Could not save the goal: ${error.message}` };
+
+      // Setting a goal implies wanting it to run.
+      await ctx.supabase.from("milo_autonomy").upsert({
+        user_id: ctx.userId, enabled: true,
+      }, { onConflict: "user_id" });
+
+      await ctx.supabase.from("activity").insert({
+        user_id: ctx.userId, message: `Milo will work on "${goal}" every ${cadence}h`,
+      });
+
+      return {
+        ok: true,
+        summary: `Standing goal set — I'll work on it every ${cadence}h, on autopilot`,
+        link: { label: "See what Milo is doing", href: `${ctx.origin}/workspace/autopilot` },
+        data: { goal_id: data?.id, cadence_hours: cadence, autonomy_enabled: true },
+      };
+    },
+  },
+
+  {
+    def: {
+      type: "function",
+      function: {
+        name: "set_autopilot",
+        description:
+          "Turn Milo's autonomous work on or off. Use when the user says things like 'stop working on your own', 'go on autopilot', 'pause'.",
+        parameters: {
+          type: "object",
+          properties: {
+            enabled: { type: "boolean", description: "true to work autonomously, false to stop" },
+          },
+          required: ["enabled"],
+        },
+      },
+    },
+    async run(args, ctx, emit) {
+      const enabled = Boolean(args.enabled);
+      emit({ label: enabled ? "Taking the wheel" : "Handing back control" });
+      const { error } = await ctx.supabase.from("milo_autonomy").upsert({
+        user_id: ctx.userId, enabled,
+      }, { onConflict: "user_id" });
+      if (error) return { ok: false, summary: `Could not change autopilot: ${error.message}` };
+      await ctx.supabase.from("activity").insert({
+        user_id: ctx.userId, message: enabled ? "Autopilot turned on" : "Autopilot turned off",
+      });
+      return {
+        ok: true,
+        summary: enabled ? "Autopilot on — I'll keep working between visits" : "Autopilot off — I'll wait for you",
+        data: { enabled },
+      };
+    },
+  },
+
+  {
+    def: {
+      type: "function",
+      function: {
+        name: "list_goals",
+        description: "List the standing goals Milo is working on, and whether autopilot is on.",
+        parameters: { type: "object", properties: {}, required: [] },
+      },
+    },
+    async run(_args, ctx, emit) {
+      emit({ label: "Checking what I'm working on" });
+      const [{ data: goals }, { data: autonomy }] = await Promise.all([
+        ctx.supabase.from("milo_goals").select("id,goal,cadence_hours,status,next_run_at,runs")
+          .eq("user_id", ctx.userId).order("created_at", { ascending: false }),
+        ctx.supabase.from("milo_autonomy").select("enabled,last_run_at,last_run_status")
+          .eq("user_id", ctx.userId).maybeSingle(),
+      ]);
+      const active = (goals ?? []).filter((g: any) => g.status === "active");
+      return {
+        ok: true,
+        summary: `${active.length} standing goal${active.length === 1 ? "" : "s"}, autopilot ${autonomy?.enabled ? "on" : "off"}`,
+        link: { label: "Open Autopilot", href: `${ctx.origin}/workspace/autopilot` },
+        data: { autonomy: autonomy ?? { enabled: false }, goals: goals ?? [] },
+      };
+    },
+  },
+
   {
     def: {
       type: "function",

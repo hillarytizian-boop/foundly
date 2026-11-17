@@ -15,7 +15,7 @@ const STEPS = [
   },
   {
     title: "He runs it while you sleep.",
-    body: "Step after step, and you see every move: tasks, drafts, approvals and costs in one audit trail.",
+    body: "Turn on autopilot and Milo keeps working between visits — research, plans, catalogue, outreach — and every move lands in one audit trail.",
   },
   {
     title: "He finds people to reach out to.",
@@ -35,6 +35,17 @@ const CHECKS = [
   ["Your data stays yours", "Tokens are stored server-side only. Nothing is used to train public models."],
 ];
 
+/** What Milo actually does on its own — one name, every role. */
+const ROLES = [
+  ["works out what to do next", "Reads the goal, the account and what's already done, then picks the next jobs."],
+  ["researches the market", "Demand signals, competitors and where the first customers come from."],
+  ["writes the plan", "Model, pricing, costs and the first thirty days."],
+  ["builds the site", "A real page at /s/your-business, scored before it's saved."],
+  ["writes the outreach", "Sequences and posts, drafted and queued for your OK."],
+  ["answers customers", "FAQ, reply macros and on-brand responses."],
+  ["reviews itself", "A weekly read on what moved, what stalled, and the one next thing."],
+];
+
 const FAQ = [
   ["What is Foundly?",
     "Foundly gives you Milo, an AI employee who builds and runs your business. He sets up your website and brand assets, writes copy, sources leads, drafts social posts and handles admin on your behalf."],
@@ -43,7 +54,9 @@ const FAQ = [
   ["How do I get started?",
     "Type your idea into the box at the top of this page. You'll create an account, get 15 free credits, and the agent team will build your first site in one run."],
   ["Does Milo do anything without asking me?",
-    "No. Sending outreach, publishing social posts and going live with a site all sit behind an approval queue until you say yes. Rejected means rejected."],
+    "He works on its own, but he does not send on its own. With autopilot on, Milo plans and completes the work — research, plans, catalogue, site, drafts — on a schedule you set, and it shows up in your feed while you're away. Anything that leaves Foundly, like publishing a site, sending outreach or posting to a social account, still waits in your approval queue until you say yes. Rejected means rejected. You can pause autopilot at any time, and every cycle is capped by a credit budget."],
+  ["What if I'm not opening the app for days?",
+    "Milo keeps its own schedule: a daily cycle runs automatically, and opening the app catches up on anything that came due while you were away. You come back to finished work and a list of things waiting for your OK, not a backlog of questions."],
   ["How much does it cost?",
     "Free to start with 15 credits. Every task shows its credit cost before it runs. Paid plans start at $25/month, and Foundly adds zero transaction fee on your Stripe payments."],
   ["Do I own what Milo makes?",
@@ -87,6 +100,36 @@ export default function Home() {
               </p>
               <Link href="/sign-up">Start yours <ArrowUpRight /></Link>
             </div>
+          </div>
+        </section>
+
+        {/* ── the roles Milo plays on its own ────────────────── */}
+        <section className="mk-dark roles-sec">
+          <div className="mk-sec">
+            <div style={{ maxWidth: 660 }}>
+              <p className="mk-eyebrow" style={{ color: "rgba(255,255,255,.5)" }}>No team required</p>
+              <h2 className="mk-h2" style={{ color: "#fff" }}>One name. Every role.</h2>
+              <p className="mk-lede-sm" style={{ color: "rgba(255,255,255,.68)" }}>
+                Autopilot on, and Milo works through the week on the goal you gave him — not just when
+                you remember to ask.
+              </p>
+            </div>
+
+            <div className="roles-grid">
+              {ROLES.map(([what, detail]) => (
+                <div className="roles-item" key={what}>
+                  <span className="roles-tick"><Check /></span>
+                  <div>
+                    <div className="roles-what">Milo {what}</div>
+                    <div className="roles-detail">{detail}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="roles-foot">
+              Anything that leaves Foundly still waits for your OK. Turn autopilot off and he stops.
+            </p>
           </div>
         </section>
 

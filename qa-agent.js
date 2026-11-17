@@ -2,7 +2,7 @@
 // Checks that a tool ran, that the work log is visible live, that the link
 // works, and that the demo/mock boundary is never blurred.
 const { chromium } = require('playwright');
-const B = 'http://127.0.0.1:3362';
+const B = 'http://127.0.0.1:3368';
 const R = [];
 const ok = (n, c, d = '') => { R.push([c ? 'PASS' : 'FAIL', n, d]); };
 

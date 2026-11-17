@@ -8,6 +8,7 @@ import CapabilityRunner from "@/components/CapabilityRunner";
 import AppFrame from "@/components/app/AppFrame";
 import ChatShell, { type ChatMsg } from "@/components/app/ChatShell";
 import Onboarding from "@/components/app/Onboarding";
+import Pulse from "@/components/app/Pulse";
 import { GlowCloud } from "@/components/marketing/Mascot";
 
 type Task = { id: string; title: string; status: string; environment: string; credit_cost: number; created_at: string; kind: string };
@@ -58,6 +59,7 @@ function Workspace() {
   const [ready, setReady] = useState(false);
   const [firstRun, setFirstRun] = useState(false);
   const [kicked, setKicked] = useState("");
+  const [autopilot, setAutopilot] = useState(false);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -82,6 +84,11 @@ function Workspace() {
     // dropped back onto the onboarding screen after their first conversation.
     setFirstRun(msgs.length === 0 && !(p as any)?.business_name && !hasLocalProgress());
     setReady(true);
+
+    // Autopilot state drives the catch-up tick. Read separately so a failure
+    // here can never block the conversation from loading.
+    supabase.from("milo_autonomy").select("enabled").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setAutopilot(Boolean((data as any)?.enabled)));
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -143,6 +150,8 @@ function Workspace() {
           </div>
         </div>
       )}
+
+      <Pulse enabled={autopilot} />
 
       <ChatShell
         business={me?.business_name ?? null}
