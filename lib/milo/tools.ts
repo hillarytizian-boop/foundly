@@ -635,6 +635,126 @@ export const TOOLS: Tool[] = [
     },
   },
 
+
+  {
+    def: {
+      type: "function",
+      function: {
+        name: "sell_on_site",
+        description:
+          "Put something for sale on one of the user's published sites, with a real Stripe Buy button. Use when the user says 'sell my X', 'put a price on the site', 'add a Buy button'.",
+        parameters: {
+          type: "object",
+          properties: {
+            site: { type: "string", description: "Which site — the business name or slug. Omit for the newest." },
+            name: { type: "string", description: "The product name" },
+            price: { type: "string", description: "Price as the user said it, e.g. '$45' or 'KSh 2500'" },
+            description: { type: "string", description: "One line about it (optional)" },
+          },
+          required: ["name", "price"],
+        },
+      },
+    },
+    async run(args, ctx, emit) {
+      emit({ label: "Putting it on sale" });
+
+      // Find the site: by slug, by name, or the newest one.
+      const { data: sites } = await ctx.supabase
+        .from("sites").select("id,slug,business_name,published")
+        .eq("user_id", ctx.userId).order("created_at", { ascending: false }).limit(20);
+      const list = (sites ?? []) as { id: string; slug: string; business_name: string | null; published: boolean }[];
+      if (!list.length) {
+        return { ok: false, summary: "You don't have a site yet. Build one first and I'll put something for sale on it." };
+      }
+      const wanted = String(args.site ?? "").toLowerCase().trim();
+      const site =
+        list.find((s) => s.slug === wanted) ??
+        list.find((s) => (s.business_name ?? "").toLowerCase().includes(wanted) && wanted.length > 0) ??
+        list[0];
+
+      // Parse the price the same way the API does — one parser, no drift.
+      const { parsePrice } = await import("@/lib/pricing");
+      const parsed = parsePrice(String(args.price ?? ""));
+      if (!parsed) {
+        return {
+          ok: false,
+          summary: `I couldn't read "${args.price}" as a price. Give me something like $45 or KSh 2,500 — Stripe's minimum is about 50 cents.`,
+        };
+      }
+
+      const { error } = await ctx.supabase.from("site_products").insert({
+        site_id: site.id,
+        user_id: ctx.userId,
+        name: String(args.name ?? "").slice(0, 140),
+        description: args.description ? String(args.description).slice(0, 600) : null,
+        price_cents: parsed.cents,
+        currency: parsed.currency,
+      });
+      if (error) return { ok: false, summary: `Could not add it: ${error.message}` };
+
+      await ctx.supabase.from("activity").insert({
+        user_id: ctx.userId,
+        message: `Added ${args.name} for sale on /s/${site.slug}`,
+      });
+
+      return {
+        ok: true,
+        summary: site.published
+          ? `${args.name} is for sale on /s/${site.slug} at ${args.price}. The Buy button is live — payments go to your own Stripe account, I take nothing.`
+          : `${args.name} is on /s/${site.slug}, but the site is still a draft, so nobody can buy yet. Publish it and the button goes live.`,
+        link: { label: "See orders", href: "/workspace/selling" },
+        data: { site: site.slug, published: site.published },
+      };
+    },
+  },
+
+  {
+    def: {
+      type: "function",
+      function: {
+        name: "set_autonomy",
+        description:
+          "Decide how far Milo may go without asking: whether it can publish sites itself, and whether what it writes can go out on its own. Use when the user says 'you decide', 'just do it all yourself', 'stop asking me', 'ask me first for everything'.",
+        parameters: {
+          type: "object",
+          properties: {
+            auto_publish: { type: "boolean", description: "publish built sites without asking" },
+            auto_send: { type: "boolean", description: "let posts, replies and outreach go out on their own (through the queue, with a cool-down and a daily cap)" },
+          },
+          required: [],
+        },
+      },
+    },
+    async run(args, ctx, emit) {
+      emit({ label: "Setting how far I go on my own" });
+      const patch: Record<string, unknown> = { user_id: ctx.userId };
+      if (args.auto_publish !== undefined) patch.auto_publish = Boolean(args.auto_publish);
+      if (args.auto_send !== undefined) {
+        const on = Boolean(args.auto_send);
+        if (on) {
+          const { data: tokens } = await ctx.supabase.from("integration_tokens").select("slug").eq("user_id", ctx.userId);
+          if (!(tokens ?? []).length) {
+            return {
+              ok: false,
+              summary: "Nothing is connected yet, so auto-send would only fail quietly. Connect X, Gmail or Instagram first and I'll switch it on.",
+              link: { label: "Connect a channel", href: "/workspace/integrations" },
+            };
+          }
+          patch.risk_ack_at = new Date().toISOString();
+        }
+        patch.auto_send = on;
+      }
+      if (Object.keys(patch).length === 1) return { ok: false, summary: "I need to know which one to change." };
+
+      const { error } = await ctx.supabase.from("milo_autonomy").upsert(patch, { onConflict: "user_id" });
+      if (error) return { ok: false, summary: `Could not change that: ${error.message}` };
+
+      const bits: string[] = [];
+      if (args.auto_publish !== undefined) bits.push(args.auto_publish ? "I'll publish the sites I build" : "I'll ask before publishing a site");
+      if (args.auto_send !== undefined) bits.push(args.auto_send ? "I'll send what I write, through a queue with a cool-down and a daily cap" : "I'll ask before anything leaves Foundly");
+      return { ok: true, summary: bits.join(". ") + ".", link: { label: "Autopilot settings", href: "/workspace/autopilot" } };
+    },
+  },
   {
     def: {
       type: "function",

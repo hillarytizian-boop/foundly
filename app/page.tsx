@@ -54,7 +54,7 @@ const FAQ = [
   ["How do I get started?",
     "Type your idea into the box at the top of this page. You'll create an account, get 15 free credits, and the agent team will build your first site in one run."],
   ["Does Milo do anything without asking me?",
-    "He works on its own, but he does not send on its own. With autopilot on, Milo plans and completes the work — research, plans, catalogue, site, drafts — on a schedule you set, and it shows up in your feed while you're away. Anything that leaves Foundly, like publishing a site, sending outreach or posting to a social account, still waits in your approval queue until you say yes. Rejected means rejected. You can pause autopilot at any time, and every cycle is capped by a credit budget."],
+    "That's your call, per thing. By default nothing leaves Foundly without your yes. Turn on publishing and Milo puts the sites it builds live by itself; turn on sending and the posts, replies and outreach it writes go out on their own — but through a queue, not instantly. Every outbound item waits fifteen minutes so you can stop it, there is a hard daily limit, and anything about money, refunds or contracts is never auto-sent no matter what the switch says. You can pause autopilot at any time, and every cycle is capped by a credit budget."],
   ["What if I'm not opening the app for days?",
     "Milo keeps its own schedule: a daily cycle runs automatically, and opening the app catches up on anything that came due while you were away. You come back to finished work and a list of things waiting for your OK, not a backlog of questions."],
   ["How much does it cost?",
@@ -272,7 +272,7 @@ export default function Home() {
               <div className="mk-art">
                 <div className="k">Social</div>
                 <b>Three posts, queued</b>
-                <p>Held in the approval queue until you say go.</p>
+                <p>Held until you say go — or released after a cool-down, if you turn sending on.</p>
                 <div className="mk-art-body">
                   <div className="mk-post">
                     <div className="ph"><i /> kijani.coffee</div>

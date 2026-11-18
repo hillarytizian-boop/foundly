@@ -22,6 +22,7 @@ import { adminClient } from "@/lib/tokens";
 import { nvidiaChat, extractJson, isConfigured } from "@/lib/nvidia";
 import { getCapability, CAPABILITIES } from "@/lib/capabilities";
 import { runCapability } from "@/lib/engine";
+import { enqueue } from "@/lib/milo/outbound";
 
 export type Goal = {
   id: string;
@@ -61,6 +62,31 @@ export type RunStep = {
 
 /** Never let one autonomous run cost more than this, regardless of the plan. */
 export const RUN_BUDGET = 6;
+
+/**
+ * The switches that decide how far Milo may go without asking.
+ *
+ *   autoPublish — publish a site it built. Reversible in one click (the site
+ *                 keeps its address, unpublish is instant), so this is the
+ *                 mild one.
+ *   autoSend    — release outbound work automatically. NOT direct sending:
+ *                 items still pass through the outbound queue with a cool-down
+ *                 and a daily cap. See lib/milo/outbound.ts.
+ */
+export type AutonomySettings = { autoPublish: boolean; autoSend: boolean };
+
+export async function settings(userId: string): Promise<AutonomySettings> {
+  const admin = adminClient();
+  const { data } = await admin
+    .from("milo_autonomy")
+    .select("auto_publish,auto_send")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return {
+    autoPublish: Boolean((data as any)?.auto_publish),
+    autoSend: Boolean((data as any)?.auto_send),
+  };
+}
 
 type Snapshot = {
   businessName: string | null;
@@ -105,7 +131,8 @@ export async function plan(goal: Goal, userId: string): Promise<Plan> {
   if (!isConfigured()) return rulesPlan(goal, snap);
 
   const allowed = ["research.market", "plan.business", "doc.catalogue", "outreach.draft",
-    "social.draft", "leads.find", "support.faq", "report.weekly", "brand.name", "idea.validate"];
+    "social.draft", "leads.find", "support.faq", "report.weekly", "brand.name", "idea.validate",
+    "ad.plan"];
 
   const menu = CAPABILITIES.filter((c) => allowed.includes(c.kind))
     .map((c) => `${c.kind} (${c.credits} credits) — ${c.blurb}${c.approval ? " [needs approval]" : ""}`);
@@ -259,7 +286,9 @@ export async function act(
   goal: Goal,
   planResult: Plan,
   userId: string,
-  emit: (s: RunStep) => void
+  emit: (s: RunStep) => void,
+  /** how far Milo may go without asking; read fresh at the start of every run */
+  opts: AutonomySettings = { autoPublish: false, autoSend: false }
 ): Promise<{ steps: RunStep[]; spent: number }> {
   const admin = adminClient();
   const steps: RunStep[] = [];
@@ -315,13 +344,63 @@ export async function act(
 
     try {
       const artifact = runCapability(cap.kind, inputs);
-      const needsApproval = cap.approval ?? false;
+
+      /**
+       * OUTBOUND WORK NEVER "COMPLETES" HERE.
+       *
+       * Drafting a post is local and safe, so the task is done. Whether it
+       * LEAVES is a separate question, answered by the outbound queue: with
+       * approval on it waits for a click; with auto_send on it waits out a
+       * cool-down and then goes, capped per day. Either way the task row is
+       * marked done, because the drafting really did finish — the send is the
+       * other thing, and it has its own row.
+       */
+      const isOutbound = cap.approval === true;
+      let queued: { status: string; note: string } | null = null;
+
+      if (isOutbound) {
+        const channel = pickChannel(cap.kind, inputs, await snapshot(userId, goal));
+        const body =
+          cap.kind === "social.draft" ? artifact.markdown
+            : cap.kind === "outreach.draft" ? artifact.markdown
+              : artifact.markdown;
+        const q = await enqueue({
+          userId,
+          taskId: task.id,
+          channel,
+          kind: cap.kind === "social.draft" ? "social_post" : cap.kind === "outreach.draft" ? "outreach_email" : "reply",
+          title: artifact.title || step.title,
+          body,
+          auto: true,
+          autoSend: opts.autoSend,
+        });
+        queued = { status: q.item?.status ?? "failed", note: q.note };
+      }
 
       await admin.from("tasks").update({
-        status: needsApproval ? "needs_approval" : "done",
-        result: { ...artifact, inputs, needs_approval: needsApproval, autonomous: true },
-        completed_at: needsApproval ? null : new Date().toISOString(),
+        status: isOutbound ? "done" : "done",
+        result: { ...artifact, inputs, needs_approval: false, autonomous: true, queued },
+        completed_at: new Date().toISOString(),
       }).eq("id", task.id);
+
+      // Auto-publish: the site Milo just built goes live without being asked,
+      // only when the owner switched that on. It stays reversible — the slug is
+      // kept and unpublishing is one click.
+      if (cap.kind === "site.generate" || (cap.kind as string) === "build_site") {
+        if (opts.autoPublish) {
+          const base = (inputs.businessName || inputs.name || "site").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "site";
+          const { data: latest } = await admin.from("sites").select("id,slug")
+            .eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+          if (latest) {
+            await admin.from("sites").update({ published: true, published_url: `/s/${(latest as any).slug}` })
+              .eq("id", (latest as any).id);
+            await admin.from("activity").insert({
+              user_id: userId, task_id: task.id,
+              message: `Milo published /s/${(latest as any).slug} on its own`,
+            });
+          }
+        }
+      }
 
       // Same side effects as executeTask, so Documents and the queues fill up.
       if (["plan.business", "plan.pitch", "research.market", "research.competitors",
@@ -333,28 +412,28 @@ export async function act(
       if (cap.kind === "outreach.draft") {
         await admin.from("outreach_campaigns").insert({
           user_id: userId, audience: inputs.audience || "prospects",
-          draft: artifact.markdown, status: needsApproval ? "draft" : "approved",
+          draft: artifact.markdown, status: "draft",
         });
       }
       if (cap.kind === "social.draft") {
         await admin.from("social_posts").insert({
           user_id: userId, platform: (inputs.platform || "instagram").toLowerCase(),
-          caption: artifact.markdown, status: needsApproval ? "draft" : "approved",
+          caption: artifact.markdown, status: "draft",
         });
       }
 
       const s: RunStep = {
         label: step.title,
-        detail: needsApproval ? "Drafted — waiting for your OK before it leaves" : "Done",
-        status: needsApproval ? "waiting" : "done",
+        detail: queued ? queued.note : "Done",
+        status: isOutbound ? "waiting" : "done",
         ms: Date.now() - t0,
       };
       steps[steps.length - 1] = s; emit(s);
 
       await admin.from("activity").insert({
         user_id: userId, task_id: task.id,
-        message: needsApproval
-          ? `Milo drafted ${step.title.toLowerCase()} on its own — waiting for your approval`
+        message: queued
+          ? `Milo drafted ${step.title.toLowerCase()} on its own — ${queued.note}`
           : `Milo completed ${step.title.toLowerCase()} on its own`,
       });
     } catch (e: any) {
@@ -373,6 +452,27 @@ export async function act(
   }
 
   return { steps, spent };
+}
+
+/**
+ * Which connected channel an outbound artifact should go out on.
+ *
+ * Preference order is by kind, then the first connected channel the account
+ * actually has. Returning a channel with no token is not a failure here — the
+ * queued row will say so in plain words when it is delivered, which is more
+ * useful than refusing to queue at all.
+ */
+function pickChannel(kind: string, inputs: Record<string, string>, snap: Snapshot): string {
+  const connected = snap.connected ?? [];
+  const prefer: Record<string, string[]> = {
+    "social.draft": ["x", "instagram", "facebook", "linkedin", "tiktok"],
+    "outreach.draft": ["gmail", "slack"],
+    "email.reply": ["gmail", "slack"],
+  };
+  const wanted = prefer[kind] ?? [];
+  for (const slug of wanted) if (connected.includes(slug)) return slug;
+  if (inputs.platform && connected.includes(inputs.platform.toLowerCase())) return inputs.platform.toLowerCase();
+  return connected[0] ?? wanted[0] ?? "x";
 }
 
 /** The one-liner a person reads when they come back. */

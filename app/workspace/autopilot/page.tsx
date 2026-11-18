@@ -15,6 +15,18 @@ type Run = {
   status: string; started_at: string; finished_at: string | null; steps: RunStep[];
 };
 type Autonomy = { enabled: boolean; last_run_at: string | null; last_run_status: string | null };
+type QueueItem = {
+  id: string; channel: string; kind: string; title: string | null; body: string | null;
+  status: string; auto: boolean; release_at: string | null; created_at: string;
+  error?: string | null;
+};
+type QueueState = {
+  settings: { auto_publish: boolean; auto_send: boolean; send_cap_per_day: number };
+  held: QueueItem[];
+  recent: QueueItem[];
+  today: { sent: number; cap: number; hard_cap: number };
+  cool_down_minutes: number;
+};
 
 const CADENCE: { label: string; hours: number }[] = [
   { label: "every 6 hours", hours: 6 },
@@ -48,6 +60,13 @@ export default function Autopilot() {
   const [msg, setMsg] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [running, setRunning] = useState(false);
+  const [queue, setQueue] = useState<QueueState | null>(null);
+  const [qmsg, setQmsg] = useState<string | null>(null);
+
+  const loadQueue = useCallback(async () => {
+    const res = await fetch("/api/milo/outbound");
+    if (res.ok) setQueue(await res.json());
+  }, []);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/milo/goals");
@@ -60,7 +79,34 @@ export default function Autopilot() {
     setReady(true);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadQueue(); }, [load, loadQueue]);
+
+  /** Flip one of the "how far may Milo go" switches. */
+  async function setAutonomySwitch(patch: { auto_publish?: boolean; auto_send?: boolean }) {
+    setBusy(true); setQmsg(null);
+    const res = await fetch("/api/milo/outbound", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ op: "settings", ...patch }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) { setQmsg(j.error ?? "Could not change that."); return; }
+    setQueue((q) => (q ? { ...q, settings: j.settings } : q));
+    await loadQueue();
+  }
+
+  /** Approve or cancel one thing waiting to leave. */
+  async function decideItem(id: string, op: "approve" | "cancel") {
+    setBusy(true); setQmsg(null);
+    const res = await fetch("/api/milo/outbound", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ op, id }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setBusy(false);
+    setQmsg(res.ok ? (op === "approve" ? (j.url ? "Sent." : "Sent.") : "Cancelled — nothing went out.") : (j.error ?? "That did not work."));
+    await loadQueue();
+  }
 
   async function toggle() {
     setBusy(true);
@@ -200,6 +246,111 @@ export default function Autopilot() {
               <p className="small" style={{ margin: "10px 0 0", color: "rgba(255,255,255,.72)" }}>{msg}</p>
             )}
           </div>
+
+          {/* ---------- how far Milo may go ---------- */}
+          <h2 className="ap-h2">What Milo may do without asking</h2>
+          <p className="small muted" style={{ margin: "0 0 12px" }}>
+            Autopilot decides <em>whether</em> Milo works. These decide <em>how far</em> it goes before it needs you.
+          </p>
+
+          {queue && (
+            <div className="ap-card" style={{ marginBottom: 14 }}>
+              <div className="ap-switch-row">
+                <div style={{ flex: 1 }}>
+                  <div className="ap-switch-title">Publish sites it builds</div>
+                  <p className="small muted" style={{ margin: "3px 0 0", lineHeight: 1.5 }}>
+                    Goes live at <code>/s/your-slug</code> without asking. Reversible in one click — the address is kept and unpublishing is instant.
+                  </p>
+                </div>
+                <button
+                  className={`ap-toggle ${queue.settings.auto_publish ? "on" : ""}`}
+                  onClick={() => setAutonomySwitch({ auto_publish: !queue.settings.auto_publish })}
+                  disabled={busy}
+                  aria-pressed={queue.settings.auto_publish}
+                >
+                  <span className="ap-knob" />
+                </button>
+              </div>
+
+              <div className="ap-switch-row" style={{ borderTop: "1px solid rgba(255,255,255,.08)", marginTop: 12, paddingTop: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div className="ap-switch-title">Send what it writes</div>
+                  <p className="small muted" style={{ margin: "3px 0 0", lineHeight: 1.5 }}>
+                    Posts, replies and outreach go out on their own — but through a queue, not straight away.
+                    Each one waits {queue.cool_down_minutes} minutes so you can stop it, and no more than{" "}
+                    {queue.today.cap} a day. Anything about money or contracts is never auto-sent.
+                  </p>
+                </div>
+                <button
+                  className={`ap-toggle ${queue.settings.auto_send ? "on" : ""}`}
+                  onClick={() => setAutonomySwitch({ auto_send: !queue.settings.auto_send })}
+                  disabled={busy}
+                  aria-pressed={queue.settings.auto_send}
+                >
+                  <span className="ap-knob" />
+                </button>
+              </div>
+
+              {queue.settings.auto_send && (
+                <p className="small dim" style={{ margin: "10px 0 0" }}>
+                  Sent today: {queue.today.sent} of {queue.today.cap}
+                  {queue.today.sent >= queue.today.cap && " — capped until tomorrow."}
+                </p>
+              )}
+            </div>
+          )}
+
+          {qmsg && <p className="small" style={{ margin: "0 0 12px", color: "rgba(255,255,255,.78)" }}>{qmsg}</p>}
+
+          {/* ---------- the queue ---------- */}
+          {queue && (queue.held.length > 0 || queue.recent.length > 0) && (
+            <>
+              <h2 className="ap-h2">Waiting to go out{queue.held.length ? ` (${queue.held.length})` : ""}</h2>
+              <p className="small muted" style={{ margin: "0 0 12px" }}>
+                Nothing here has been sent. Approve it, or leave it and it goes out on its own if auto-send is on.
+              </p>
+
+              {queue.held.length === 0 && <p className="small muted">Nothing waiting.</p>}
+
+              {queue.held.map((item) => (
+                <div key={item.id} className="ap-goal" style={{ alignItems: "flex-start" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 600 }}>{item.title || item.kind}</span>
+                      <span className="a-tag wait">{item.channel}</span>
+                      {item.auto && item.release_at && (
+                        <span className="a-tag">{queue.settings.auto_send ? `auto · ${when(item.release_at)}` : "auto off"}</span>
+                      )}
+                    </div>
+                    {item.body && <p className="small muted ap-clamp" style={{ margin: "4px 0 0" }}>{item.body.replace(/[#*`>_-]/g, "").trim().slice(0, 220)}</p>}
+                    <p className="small dim" style={{ margin: "5px 0 0" }}>Drafted {when(item.created_at)}</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <button className="ap-mini" onClick={() => decideItem(item.id, "approve")} disabled={busy}>Send</button>
+                    <button className="ap-mini bad" onClick={() => decideItem(item.id, "cancel")} disabled={busy}>Cancel</button>
+                  </div>
+                </div>
+              ))}
+
+              {queue.recent.length > 0 && (
+                <details className="ap-details">
+                  <summary>Already handled ({queue.recent.length})</summary>
+                  {queue.recent.map((item) => (
+                    <div key={item.id} className="ap-goal ap-goal-quiet">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 13.5 }}>{item.title || item.kind}</span>
+                          <span className={`a-tag ${item.status === "sent" ? "ok" : item.status === "failed" ? "bad" : "wait"}`}>{item.status}</span>
+                          <span className="small dim">{item.channel}</span>
+                        </div>
+                        {item.error && <p className="small" style={{ margin: "4px 0 0", color: "var(--bad, #e0736a)" }}>{item.error}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </details>
+              )}
+            </>
+          )}
 
           {/* ---------- what Milo is working towards ---------- */}
           <h2 className="ap-h2">Standing goals</h2>

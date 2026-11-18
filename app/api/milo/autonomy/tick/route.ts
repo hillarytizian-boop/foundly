@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminClient } from "@/lib/tokens";
-import { plan, act, summarise, type Goal } from "@/lib/milo/autonomy";
+import { plan, act, summarise, settings, type Goal } from "@/lib/milo/autonomy";
+import { releaseFor, sentToday, DAILY_SEND_CAP } from "@/lib/milo/outbound";
+import { deliver } from "@/lib/milo/deliver";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -23,6 +25,29 @@ export const dynamic = "force-dynamic";
  * unset, only the in-app trigger works, which calls this with the user's own
  * session cookie.
  */
+/**
+ * Release every auto-send item this user has cooling down that is now due.
+ *
+ * Same claim → deliver → finish sequence as the API route, run here so a user
+ * who never opens the queue page still gets their queued work sent. Capped, and
+ * capped again at DAILY_SEND_CAP regardless of the account's own setting.
+ */
+async function releaseDue(userId: string) {
+  const admin = adminClient();
+  const { data: aut } = await admin
+    .from("milo_autonomy")
+    .select("auto_send,send_cap_per_day")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!(aut as any)?.auto_send) return { released: 0, skipped: 0, note: "auto_send off" };
+
+  // Same releaser as the in-app call: one path, one set of rules.
+  return releaseFor(userId, deliver, {
+    cap: Number((aut as any)?.send_cap_per_day) || 3,
+    autoSend: true,
+  });
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const userId = url.searchParams.get("user_id");
@@ -93,8 +118,14 @@ export async function GET(req: Request) {
   // Both phases are bounded (plan ≈ 1 model call, act ≈ 2-3 capabilities), so
   // this stays inside the function timeout.
   try {
+    // Release anything whose cool-down has expired BEFORE planning more work.
+    // Sending is the thing with a deadline (the buyer's attention, the day's
+    // cap); drafting can wait a few seconds.
+    const released = await releaseDue(targetUser!);
+
     const planned = await plan(goal, targetUser!);
-    const { steps, spent } = await act(goal, planned, targetUser!, () => {});
+    const autonomySettings = await settings(targetUser!);
+    const { steps, spent } = await act(goal, planned, targetUser!, () => {}, autonomySettings);
     const summary = summarise(planned, steps);
 
     await admin.from("milo_runs").update({
@@ -111,7 +142,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       ran: true, goal: goal.goal, headline: planned.headline,
-      engine: planned.engine, steps, spent, summary,
+      engine: planned.engine, steps, spent, summary, released,
     });
   } catch (e: any) {
     await admin.from("milo_runs").update({

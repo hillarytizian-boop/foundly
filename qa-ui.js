@@ -1,7 +1,7 @@
 // UI regression suite for the "two different websites" fix.
 // Every check here is something that was actually broken on production.
 const { chromium } = require('playwright');
-const B = process.env.B || 'http://127.0.0.1:3390';
+const B = process.env.B || 'http://127.0.0.1:3421';
 const R = [];
 const ok = (n, c, d = '') => R.push([c ? 'PASS' : 'FAIL', n, d]);
 

@@ -1,7 +1,7 @@
 // QA for autopilot: Milo must actually work when nobody asks, within limits,
 // and must never let autonomous work leave Foundly without approval.
 const { chromium } = require('playwright');
-const B = 'http://127.0.0.1:3401';
+const B = 'http://127.0.0.1:3421';
 const R = [];
 const ok = (n, c, d = '') => R.push([c ? 'PASS' : 'FAIL', n, d]);
 
@@ -141,6 +141,8 @@ const ok = (n, c, d = '') => R.push([c ? 'PASS' : 'FAIL', n, d]);
   const land = (await p.innerText('body')).replace(/\s+/g, ' ');
   ok('landing: positions autonomous work', /on its own|while you sleep|One name\. Every role/i.test(land));
   ok('landing: still says sends need approval', /approval|your OK/i.test(land));
+  // Full auto must not be advertised as an unconditional free-for-all.
+  ok('landing: auto-send is disclosed with its guardrails', /fifteen minutes|15 minutes|cool-down|daily limit/i.test(land));
 
   ok('no console/page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
 

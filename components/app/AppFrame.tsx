@@ -95,6 +95,7 @@ export default function AppFrame({
             ["Build a site", "/workspace/build"],
             ["Run", "/workspace/run"],
             ["Documents", "/workspace/docs"],
+            ["Selling", "/workspace/selling"],
             ["Autopilot", "/workspace/autopilot"],
             ["Connections", "/workspace/integrations"],
             ["Full chat", "/line"],

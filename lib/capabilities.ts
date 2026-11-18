@@ -127,6 +127,22 @@ export const CAPABILITIES: Capability[] = [
     credits: 1, approval: false, blurb: "What moved, what stalled, and the one thing to do next.",
     inputs: [{ key: "idea", label: "Business", required: true }],
   },
+  {
+    // Ads are PLANNED, never bought. This capability produces a campaign brief a
+    // human could paste into Meta or Google Ads in five minutes — audience,
+    // creative, budget split, the test — and it stops there. There is no ad
+    // account, no spend, no billing path, and nothing in this repo can reach an
+    // ad network. The word "campaign" here means a document, which is why the
+    // artifact says so at the top.
+    kind: "ad.plan", title: "Plan an ad campaign", env: "run", category: "Marketing",
+    credits: 2, approval: false,
+    blurb: "Audience, three ads, budget split and the test to run — a brief you launch yourself. Nothing is spent.",
+    inputs: [
+      { key: "idea", label: "What you're advertising", required: true },
+      { key: "budget", label: "Budget you're willing to spend", placeholder: "$5/day" },
+      { key: "channel", label: "Where", placeholder: "Instagram, Google Search, both" },
+    ],
+  },
 ];
 
 export const getCapability = (kind: string) => CAPABILITIES.find((c) => c.kind === kind);

@@ -54,7 +54,7 @@ export default function MarketingFooter() {
             </Link>
             <p>
               The AI employee that builds and runs your business. Milo writes the site, does the
-              outreach, drafts the posts — and you approve everything that goes out.
+              outreach, posts the tweets — and you decide what goes out on its own.
             </p>
             <div className="loc">Nairobi · London · San Francisco</div>
           </div>

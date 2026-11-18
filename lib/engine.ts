@@ -287,6 +287,59 @@ export function runCapability(kind: string, inputs: Record<string, string>): Art
         ]
       );
 
+    case "ad.plan": {
+      const budget = inputs.budget || "$5/day";
+      const channel = inputs.channel || "Instagram";
+      return toArtifact(
+        `Ad brief — ${idea}`,
+        `A plan you can launch yourself in about ten minutes. Nothing here is live and nothing has been spent.`,
+        [
+          {
+            heading: "This is a brief, not a campaign",
+            body: `Foundly does not run ads and cannot spend money on your behalf. There is no ad account connected and no budget has been touched. You take this brief to ${channel} yourself and decide what to launch, at what price, for how long.`,
+          },
+          {
+            heading: "Who you are targeting",
+            body: bullets([
+              `One audience only to start: people who already showed intent — save, follow, or visit. Not cold reach.`,
+              `Age and location: match the buyers you have already had. If you have had none, start with the city you can deliver to.`,
+              `Exclusions: past purchasers, and anyone under 18.`,
+              `Why narrow: at ${budget}, a broad audience buys you noise at roughly 10x the cost per useful click.`,
+            ]),
+          },
+          {
+            heading: "Three ads to test",
+            body: bullets([
+              `A — The problem. "Tired of X? This is what we do about it." One image, product in use, no text overlay.`,
+              `B — The proof. A real customer's words, verbatim, over a photo of the thing. Screenshots beat testimonials copy.`,
+              `C — The offer. Price and what they get, stated plainly. "{{price}} — delivered this week." Highest intent, lowest volume.`,
+            ]),
+          },
+          {
+            heading: `Budget, honestly`,
+            body: `You said ${budget}. Run ONE ad set for 5–7 days before judging, or you will be reading noise. If ${budget} is all there is, spend it all on ad B (proof) — it is the one that survives a small audience. Do not split three ways; three ways at that size proves nothing about anything.`,
+          },
+          {
+            heading: "Kill criteria — write these down before you launch",
+            body: bullets([
+              `After 3 days: if cost per click is more than 5x your product margin, stop the ad.`,
+              `After 7 days: if clicks are coming but no sales, the ad is fine and the page is the problem — fix the page, do not raise the budget.`,
+              `If neither ad gets 100 clicks in 7 days, the audience is wrong, not the creative.`,
+            ]),
+          },
+          {
+            heading: "Before you spend anything",
+            body: bullets([
+              `The page must take money. A Buy button and a real price, or the ad is paying to send people to a dead end.`,
+              `You need a way to answer questions the same day. Ads create messages; unanswered messages waste the spend.`,
+              `Have stock or a delivery date you can honour. Refunds cost more than the ad.`,
+            ]),
+          },
+          { heading: "What Foundly does do", body: `Writes the ad copy, the landing page, and the follow-up. Ask Milo for a site and it will build the page these ads should point at.` },
+        ]
+      );
+    }
+
     default:
       return toArtifact(
         "Milo run",
