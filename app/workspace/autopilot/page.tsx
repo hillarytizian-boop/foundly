@@ -220,7 +220,7 @@ export default function Autopilot() {
                 <p className="small muted" style={{ margin: "4px 0 0", lineHeight: 1.55 }}>
                   {autonomy.enabled
                     ? <>Last cycle {when(autonomy.last_run_at)}. It works while you&apos;re away and again whenever a goal comes due.</>
-                    : "Turn this on and Milo keeps working between visits. Nothing that leaves Foundly sends without your OK."}
+                    : "Turn this on and Milo keeps working between visits. What it may send without asking is set below — by default, nothing."}
                 </p>
               </div>
               <button className={`btn btn-sm ${autonomy.enabled ? "btn-ghost" : ""}`} onClick={toggle} disabled={busy}>
