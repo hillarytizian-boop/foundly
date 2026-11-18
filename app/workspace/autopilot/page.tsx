@@ -307,7 +307,8 @@ export default function Autopilot() {
             <>
               <h2 className="ap-h2">Waiting to go out{queue.held.length ? ` (${queue.held.length})` : ""}</h2>
               <p className="small muted" style={{ margin: "0 0 12px" }}>
-                Nothing here has been sent. Approve it, or leave it and it goes out on its own if auto-send is on.
+                Nothing here has been sent yet. Items drafted while auto-send was on are released on their own after the
+                cool-down — items drafted while it was off wait for you, even if you turn it on later.
               </p>
 
               {queue.held.length === 0 && <p className="small muted">Nothing waiting.</p>}
